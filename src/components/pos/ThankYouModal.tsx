@@ -7,251 +7,508 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, Share2, Send } from "lucide-react";
-import { useRef, useState } from "react";
-import jsPDF from "jspdf";
+import { Printer, Share2, Send, ImageDown, RotateCcw } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import LabelBill from "./LabelBill";
 import { SaleData } from "@/lib/type";
 import { InvoiceData } from "@/lib/printer";
-
-interface ThankYouModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  invoiceData: InvoiceData | null;
-  customerPhone: string;
-}
 
 export function ThankYouModal({
   open,
   onOpenChange,
   invoiceData,
   customerPhone,
-}: ThankYouModalProps) {
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  invoiceData: InvoiceData | null;
+  customerPhone: string;
+}) {
   const invoiceRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(false);
 
+  // ====== STATES ======
+  const [loading, setLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [base64Image, setBase64Image] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+
+  const [barcodeBase64, setBarcodeBase64] = useState<string | null>(null);
+  const isActive = useRef(true);
+
+  const [step, setStep] = useState<1 | 2>(1);
+  const [selectedType, setSelectedType] = useState<
+    "TEXT" | "IMAGE" | "PDF" | null
+  >(null);
+  useEffect(() => {
+    isActive.current = open;
+
+    if (open) {
+      setPreviewUrl(null);
+      setBase64Image(null);
+      setPdfBlob(null);
+      setLoading(false);
+      setSelectedType(null);
+      setStep(1);
+    }
+  }, [open]);
+
+  // ====== SALE DATA ======
   const saleData: SaleData | null = invoiceData
     ? {
-        items: (invoiceData.items ?? []).map((item: any) => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.total,
-          discount_value: item.discountValue || item.discount_value || 0,
-          discount_amount: item.discountAmount || item.discount_amount || 0,
-        })),
-        totalAmount: invoiceData.total ?? 0,
-        paymentMethod: invoiceData.paymentMethod ?? "Cash",
-        invoiceNumber: invoiceData.invoiceNumber ?? "N/A",
-        createdAt: invoiceData.date ?? new Date().toISOString(),
-        customerName: invoiceData.customerName || "Walk-in Customer",
-        customerPhone: customerPhone || "N/A",
-      }
+      items: (invoiceData.items ?? []).map((item: any) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total,
+
+        discount_value: item.discount_value ?? item.discountValue ?? 0,
+        discount_amount: item.discount_amount ?? item.discountAmount ?? 0,
+      })),
+      totalAmount: invoiceData.total ?? 0,
+      paymentMethod: invoiceData.paymentMethod ?? "Cash",
+      invoiceNumber: invoiceData.invoiceNumber ?? "N/A",
+      createdAt: invoiceData.date ?? new Date().toISOString(),
+      customerName: invoiceData.customerName || "Walk-in Customer",
+      customerPhone: customerPhone || "N/A",
+    }
     : null;
-  
-  // Get sale-level discount from invoiceData
-  const saleDiscountAmount = invoiceData?.discountAmount || 0;
 
-  // ✅ Generate PDF blob for sharing/downloading
-  const generatePDF = async (): Promise<Blob | null> => {
-    if (!invoiceRef.current) return null;
+  const discountAmount =
+    invoiceData?.discountAmount ??  // from POS
+    invoiceData?.discount_amount ?? // from DB
+    0;
 
-    try {
-      const element = invoiceRef.current;
-
-      // Force element width to a fixed size during capture
-      const originalWidth = element.style.width;
-      element.style.width = `${element.scrollWidth}px`;
-
-      const canvas = await html2canvas(element, {
-        backgroundColor: "#ffffff",
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: element.scrollWidth,
-      });
-
-      // Restore element width after render
-      element.style.width = originalWidth;
-
-      const imgData = canvas.toDataURL("image/png");
-      const contentWidth = canvas.width;
-      const contentHeight = canvas.height;
-
-      const pdfWidth = contentWidth * 0.75;
-      const pdfHeight = contentHeight * 0.75;
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "pt",
-        format: [pdfWidth, pdfHeight],
-      });
-
-      // ✅ Full fill, no edges visible
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth + 3, pdfHeight);
-
-      return pdf.output("blob");
-    } catch (err) {
-      console.error("PDF Generation Failed:", err);
-      return null;
-    }
+  const getItemDiscount = (item: any) => {
+    return (
+      item.discount_amount ??  // from DB
+      item.discountAmount ??  // from POS object
+      item.discount_value ??  // fallback
+      0
+    );
   };
 
-  // ✅ Download PDF
-  const handleDownloadPDF = async () => {
+
+  // ============================================================
+  // SELECT HANDLERS
+  // ============================================================
+
+
+
+  // ---- IMAGE selected → generate PNG ----
+  const handleSelectImage = async () => {
+    if (loading) return;
+
+    setSelectedType("IMAGE");
+    setStep(2);
+
+    if (!invoiceRef.current) return;
+
     setLoading(true);
-    const pdfBlob = await generatePDF();
-    if (pdfBlob && saleData) {
-      const pdfFile = new File(
-        [pdfBlob],
-        `Invoice_${saleData.invoiceNumber}.pdf`,
-        { type: "application/pdf" }
-      );
-      const url = URL.createObjectURL(pdfFile);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = pdfFile.name;
-      a.click();
-      URL.revokeObjectURL(url);
+
+    // Force UI repaint before html2canvas
+    await new Promise((res) =>
+      requestAnimationFrame(() => requestAnimationFrame(res))
+    );
+
+    // If modal closed during the frame → cancel
+    if (!isActive.current || !invoiceRef.current) {
+      setLoading(false);
+      return;
     }
+
+    const canvas = await html2canvas(invoiceRef.current, { scale: 3 });
+    const url = canvas.toDataURL("image/png");
+
+    setPreviewUrl(url);
+    setBase64Image(url.replace("data:image/png;base64,", ""));
+
     setLoading(false);
   };
 
-  // ✅ Share PDF via Web Share API
-  const handleSharePDF = async () => {
+  // ---- PDF selected → generate PDF ----
+  const handleSelectPDF = async () => {
+    if (loading) return; // blocks double clicks
+
+    setSelectedType("PDF");
+    setStep(2);
+
+    if (!invoiceRef.current) return;
+
     setLoading(true);
-    const pdfBlob = await generatePDF();
 
-    if (pdfBlob && saleData) {
-      const pdfFile = new File(
-        [pdfBlob],
-        `Invoice_${saleData.invoiceNumber}.pdf`,
-        { type: "application/pdf" }
-      );
+    await new Promise((res) =>
+      requestAnimationFrame(() => requestAnimationFrame(res))
+    );
 
-      try {
-        const shareData = {
-          files: [pdfFile],
-          title: "Invoice",
-          text: `Here is your invoice from Bhootia Fabric Collection`,
-        };
+    const canvas = await html2canvas(invoiceRef.current, { scale: 3 });
+    const imgData = canvas.toDataURL("image/png");
 
-        // ✅ 1️⃣ Normal PWA/Phone Share
-        if (navigator.share && navigator.canShare?.(shareData)) {
-          await navigator.share(shareData);
-          setLoading(false);
-          return;
-        }
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "px",
+      format: [canvas.width, canvas.height],
+    });
 
-        // ✅ 2️⃣ Android native intent fallback (same as your image version)
-        if (/Android/i.test(navigator.userAgent)) {
-          const blobUrl = URL.createObjectURL(pdfBlob);
+    pdf.addImage({
+      imageData: imgData,
+      format: "PNG",
+      x: 0,
+      y: 0,
+      width: canvas.width,
+      height: canvas.height,
+    });
 
-          // Create Android intent for PDF
-          const intentUrl = `intent:${encodeURIComponent(
-            blobUrl
-          )}#Intent;action=android.intent.action.SEND;type=application/pdf;end;`;
+    const blob = pdf.output("blob");
+    setPdfBlob(blob);
+    setLoading(false);
+  };
 
-          window.location.assign(intentUrl);
-          setLoading(false);
-          return;
-        }
+  // ============================================================
+  // ACTION BUTTONS
+  // ============================================================
 
-        // ✅ 3️⃣ Fallback: trigger download
-        alert(
-          "Sharing not supported on this device. The invoice will be downloaded instead."
+  const downloadPNG = () => {
+    if (!previewUrl) return;
+
+    const a = document.createElement("a");
+    a.href = previewUrl;
+    a.download = "invoice.png";
+    a.click();
+  };
+
+  const printNative = () => {
+    if (!base64Image) return;
+
+    const deep = `wts://print?type=receipt&image=${encodeURIComponent(
+      base64Image
+    )}`;
+
+    window.location.href = deep;
+  };
+
+  const downloadPDF = () => {
+    if (!pdfBlob) return;
+
+    const file = new File([pdfBlob], "invoice.pdf", {
+      type: "application/pdf",
+    });
+
+    const url = URL.createObjectURL(file);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "invoice.pdf";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const sharePDF = () => {
+    if (!pdfBlob) return;
+
+    const file = new File([pdfBlob], "invoice.pdf", {
+      type: "application/pdf",
+    });
+    const shareData = { files: [file] };
+
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      navigator.share(shareData);
+      return;
+    }
+  };
+
+  // ------------------- ADD THIS AT TOP OF FILE -------------------
+
+  /**
+   * Safely parse ANY datetime (MySQL, ISO, UTC, string, null)
+   * And converts it into IST (Indian Standard Time)
+   */
+  const parseToIST = (input: any): Date => {
+    if (!input) return new Date();
+
+    let raw =
+      typeof input === "string"
+        ? input.replace(" ", "T") // convert MySQL "2025-01-29 10:22" → ISO
+        : input;
+
+    // If it's a string but does NOT end in Z → force UTC so IST conversion works
+    if (typeof raw === "string" && !raw.endsWith("Z")) {
+      raw += "Z";
+    }
+
+    const utc = new Date(raw);
+
+    // If still invalid → fallback to now
+    if (isNaN(utc.getTime())) {
+      return new Date();
+    }
+
+    // Add IST offset: 5 hours 30 minutes
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    return new Date(utc.getTime() + IST_OFFSET);
+  };
+
+  // --------------------------------------------------------------------
+
+
+
+
+  // ------------------ YOUR ORIGINAL COMPONENT BELOW -------------------
+
+  const printFast = () => {
+    if (!saleData) return;
+
+    /* ───────────────── IST DATE & TIME ───────────────── */
+    const ist = parseToIST(saleData.createdAt);
+
+    const formattedDate = ist.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    let hour = ist.getHours();
+    const minute = ist.getMinutes().toString().padStart(2, "0");
+    if (hour > 12) hour -= 12;
+    if (hour === 0) hour = 12;
+
+    const formattedTime = `${hour}:${minute}`;
+
+    /* ───────────────── CALCULATIONS ───────────────── */
+
+    // 1️⃣ Gross per item
+    const itemsWithGross = saleData.items.map((item) => {
+      const gross = item.price * item.quantity;
+      return { ...item, gross };
+    });
+
+    // 2️⃣ Subtotal (before discount)
+    const subtotalRaw = itemsWithGross.reduce(
+      (sum, i) => sum + i.gross,
+      0
+    );
+
+    const subtotal = Math.round(subtotalRaw);
+
+    // 3️⃣ Total discount (bill or item based)
+    const totalDiscount =
+      discountAmount && discountAmount > 0
+        ? Math.round(discountAmount)
+        : Math.round(
+          itemsWithGross.reduce(
+            (sum, i) => sum + getItemDiscount(i),
+            0
+          )
         );
-        const url = URL.createObjectURL(pdfFile);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = pdfFile.name;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error("Share failed:", err);
-        alert("Sharing failed. Please try downloading manually.");
-      }
-    }
 
-    setLoading(false);
+    // 4️⃣ Distribute discount per item (proportional)
+    const itemsFinal = itemsWithGross.map((item) => {
+      const ratio = subtotalRaw > 0 ? item.gross / subtotalRaw : 0;
+      const itemDiscount = Math.round(totalDiscount * ratio);
+      const net = item.gross - itemDiscount;
+
+      return {
+        ...item,
+        itemDiscount,
+        net,
+      };
+    });
+
+    // 5️⃣ Final payable
+    const total = Math.round(
+      itemsFinal.reduce((sum, i) => sum + i.net, 0)
+    );
+
+    /* ───────────────── FORMATTER ───────────────── */
+    const formatIN = (num: number) =>
+      num.toLocaleString("en-IN", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      });
+
+    /* ───────────────── FAST PRINT DATA ───────────────── */
+    const fastData = {
+      invoiceNumber: saleData.invoiceNumber,
+      customerName: saleData.customerName,
+      customerPhone: saleData.customerPhone,
+      date: formattedDate,
+      time: formattedTime,
+      paymentMethod: saleData.paymentMethod,
+
+      items: itemsFinal.map((i) => ({
+        name: i.name,
+        qty: i.quantity,
+        price: formatIN(i.price),        // rate
+        gross: formatIN(i.gross),         // before discount
+        discount: formatIN(i.itemDiscount), // item discount
+        total: formatIN(i.net),           // after discount
+      })),
+
+      subtotal: formatIN(subtotal),        // before discount
+      discount: formatIN(totalDiscount),   // total discount
+      total: formatIN(total),              // final payable
+      barcode: barcodeBase64,
+    };
+
+    /* ───────────────── DEEP LINK ───────────────── */
+    const json = JSON.stringify(fastData);
+    const base64 = btoa(unescape(encodeURIComponent(json)));
+    const deepLink = `wts://receipt?json=${encodeURIComponent(base64)}`;
+
+    console.log("Fast Print Data:", fastData);
+    console.log("Fast Print Deep Link:", deepLink);
+
+    // 🚀 Trigger Android app
+    window.location.href = deepLink;
   };
 
-  // ✅ Send WhatsApp Message Only (no PDF)
-  const handleSendToCustomer = async () => {
-    // Skip WhatsApp if using default/placeholder phone number
-    if (
-      !customerPhone ||
-      customerPhone === "0000000000" ||
-      customerPhone === "N/A"
-    ) {
-      return alert("Customer phone number not available for WhatsApp sharing");
-    }
+  const formatPhone = (phone: string) => {
+    if (!phone) return "";
 
-    setLoading(true);
+    // Remove spaces, +, -, brackets
+    let cleaned = phone.replace(/[^0-9]/g, "");
 
-    if (saleData) {
-      // ✅ Custom WhatsApp message
-      const message = `Hello ${saleData.customerName || "dear customer"}! 😊
-Thank you for shopping with *Bhootia Fabric Collection* 🛍️
+    // If already starts with 91 (Indian number)
+    if (cleaned.startsWith("91")) return cleaned;
 
-🧾 *Invoice Details*
-• Invoice No: ${saleData.invoiceNumber}
-• Date: ${new Date(saleData.createdAt ?? new Date()).toLocaleDateString()}
-• Payment Method: ${saleData.paymentMethod}
-• Total Amount: ₹${Math.round(saleData.totalAmount)}
+    // Remove leading zero (e.g., 0987654321 → 987654321)
+    if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
 
-We appreciate your purchase ❤️`;
-
-      // ✅ Create WhatsApp message link
-      const whatsappUrl = `https://wa.me/${customerPhone.replace(
-        /[^0-9]/g,
-        ""
-      )}?text=${encodeURIComponent(message)}`;
-
-      // ✅ Open WhatsApp directly
-      window.open(whatsappUrl, "_blank");
-    }
-
-    setLoading(false);
+    // Add India country code
+    return "91" + cleaned;
   };
+
+  const sendWhatsApp = () => {
+    if (!customerPhone || customerPhone === "N/A")
+      return alert("Invalid number");
+
+    const phone = formatPhone(customerPhone);
+
+    const msg =
+      `Hello ${saleData?.customerName}!\n` +
+      `Thanks for shopping with us.\n` +
+      `Invoice: ${saleData?.invoiceNumber}\n` +
+      `Total: ₹${saleData?.totalAmount}`;
+
+    const encodedMsg = encodeURIComponent(msg).replace(/%0A/g, "%0A");
+
+    window.open(`https://wa.me/${phone}?text=${encodedMsg}`, "_blank");
+
+
+  };
+
+  // ============================================================
+  // UI
+  // ============================================================
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[380px]">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">
-            Thank you for your purchase!
-          </DialogTitle>
+          <DialogTitle>Invoice Receipt</DialogTitle>
         </DialogHeader>
 
-        {/* Bill Preview */}
-        {/* Bill Preview */}
-        <div className="flex justify-center">
-          <div ref={invoiceRef} className="scale-[0.95] origin-top">
-            {saleData && <LabelBill data={saleData} discountAmount={saleDiscountAmount} />}
+        {loading && (
+          <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-50">
+            <div className="animate-spin h-8 w-8 border-4 border-gray-400 border-t-transparent rounded-full"></div>
           </div>
+        )}
+
+        {/* SHOW BILL UNTIL IMAGE IS GENERATED */}
+        {!(selectedType === "IMAGE" && previewUrl) && (
+          <div className="flex justify-center mt-3">
+            <div ref={invoiceRef}>
+              {saleData && (
+                <LabelBill
+                  data={saleData}
+                  discountAmount={discountAmount}
+                  onBarcode={setBarcodeBase64}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* SHOW IMAGE PREVIEW ONLY WHEN IMAGE MODE + PREVIEW GENERATED */}
+        {selectedType === "IMAGE" && previewUrl && (
+          <div className="flex justify-center mt-4">
+            <img
+              src={previewUrl}
+              className="w-56 rounded shadow border"
+              alt="Invoice Preview"
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 mt-6">
+          <Button onClick={sendWhatsApp}>
+            <Send className="mr-1 h-4 w-4" /> WhatsApp
+          </Button>
+          <Button onClick={printFast} className="bg-green-600 text-white">
+            Fast Print
+          </Button>
+
         </div>
+        {/* STEP 1 — SELECT MODE */}
+        {step === 1 && (
+          <div className="flex flex-col gap-3 mt-6">
+            <Button onClick={handleSelectImage}>Image</Button>
+            <Button onClick={handleSelectPDF}>PDF</Button>
+          </div>
+        )}
 
-        {/* Buttons */}
-        <div className="mt-4 flex gap-2 flex-wrap justify-center">
-          <Button onClick={handleDownloadPDF} disabled={loading}>
-            <Printer className="mr-2 h-4 w-4" />
-            {loading ? "Processing..." : "Download PDF"}
-          </Button>
+        {/* STEP 2 — TEXT OPTIONS */}
 
-          <Button onClick={handleSharePDF} disabled={loading}>
-            <Share2 className="mr-2 h-4 w-4" />
-            {loading ? "Processing..." : "Share PDF"}
-          </Button>
+        {/* STEP 2 — IMAGE OPTIONS */}
+        {step === 2 && selectedType === "IMAGE" && (
+          <div className="flex flex-col gap-3 mt-6">
+            <Button
+              onClick={printNative}
+              disabled={!base64Image || loading}
+              className="bg-blue-600 text-white"
+            >
+              <Printer className="mr-1 h-4 w-4" /> Print
+            </Button>
 
-          <Button onClick={handleSendToCustomer} disabled={loading}>
-            <Send className="mr-2 h-4 w-4" />
-            {loading ? "Processing..." : "Send to Customer"}
-          </Button>
-        </div>
+            <Button onClick={downloadPNG} disabled={!previewUrl}>
+              <ImageDown className="mr-1 h-4 w-4" /> PNG Download
+            </Button>
+
+            <Button variant="ghost" onClick={() => setStep(1)} className="mt-3">
+              <RotateCcw className="mr-1 h-4 w-4" /> Back
+            </Button>
+          </div>
+        )}
+
+        {/* STEP 2 — PDF OPTIONS */}
+        {step === 2 && selectedType === "PDF" && (
+          <div className="flex flex-col gap-3 mt-6">
+            <Button onClick={downloadPDF} disabled={!pdfBlob}>
+              <Printer className="mr-1 h-4 w-4" /> Download PDF
+            </Button>
+
+            <Button onClick={sharePDF} disabled={!pdfBlob}>
+              <Share2 className="mr-1 h-4 w-4" /> Share PDF
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setLoading(false);
+                setPreviewUrl(null);
+                setBase64Image(null);
+                setPdfBlob(null);
+                setSelectedType(null);
+                setStep(1);
+              }}
+              className="mt-3"
+            >
+              <RotateCcw className="mr-1 h-4 w-4" /> Back
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

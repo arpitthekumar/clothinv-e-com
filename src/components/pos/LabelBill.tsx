@@ -7,12 +7,13 @@ import { toZonedTime, format } from "date-fns-tz"; // ✅ correct import
 
 interface LabelBillProps {
   data: SaleData;
-  taxPercent?: number;
   discountAmount?: number;
+  onBarcode?: (b64: string | null) => void;
 }
 
+
 const LabelBill = React.forwardRef<HTMLDivElement, LabelBillProps>(
-  ({ data, taxPercent = 0, discountAmount = 0 }, ref) => {
+  ({ data, discountAmount = 0, onBarcode }, ref) => {
     // ✅ Convert UTC → IST safely using date-fns-tz
     const createdAtRaw =
       typeof data.createdAt === "string"
@@ -36,26 +37,56 @@ const LabelBill = React.forwardRef<HTMLDivElement, LabelBillProps>(
     const formattedTime = `${hour}:${minute}`;
 
     // 🧮 Calculate totals
-    const itemsWithTotals = data.items.map((item) => ({
-      ...item,
-      itemSubtotal: item.price * item.quantity,
-    }));
+
+    const subtotalRaw = data.items.reduce(
+      (sum, i) => sum + i.price * i.quantity,
+      0
+    );
+
+    const billDiscount = Number(discountAmount) || 0;
+
+    const itemsWithTotals = data.items.map((item) => {
+      const rate = Number(item.price) || 0;
+      const qty = Number(item.quantity) || 1;
+      const gross = rate * qty;
+
+      const ratio = subtotalRaw > 0 ? gross / subtotalRaw : 0;
+      const itemDiscount = Math.round(billDiscount * ratio);
+      const f_amt = gross - itemDiscount;
+
+     
+
+      return {
+        ...item,
+        itemSubtotal: f_amt,
+      };
+    });
+
+
 
     const subtotal = Math.round(
       itemsWithTotals.reduce((sum, i) => sum + i.itemSubtotal, 0)
     );
 
-    const totalDiscount =
-      discountAmount > 0
-        ? Math.round(discountAmount)
-        : Math.round(
-            itemsWithTotals.reduce(
-              (sum, i) => sum + (i.discount_amount || 0),
-              0
-            )
-          );
+    // 1️⃣ Subtotal BEFORE discount (display only)
+    const displaySubtotal = Math.round(
+      data.items.reduce(
+        (sum, i) => sum + i.price * i.quantity,
+        0
+      )
+    );
 
-    const total = subtotal - totalDiscount;
+    // 2️⃣ Discount amount (from DB or prop)
+    const displayDiscount = Math.round(
+      Number(discountAmount) || 0
+    );
+
+
+    // 3️⃣ Final total (already discounted items)
+    const total = Math.round(
+      itemsWithTotals.reduce((sum, i) => sum + i.itemSubtotal, 0)
+    );
+
 
     // ✅ Format as Indian-style currency (₹1,23,456)
     const formatIN = (num: number) =>
@@ -142,15 +173,15 @@ const LabelBill = React.forwardRef<HTMLDivElement, LabelBillProps>(
         </table>
 
         <hr style={{ borderColor: "#000", margin: "4px 0" }} />
-
         {/* TOTALS */}
         <div style={{ fontSize: "13px" }}>
           <p>
-            <strong>Subtotal:</strong> ₹{formatIN(subtotal)}
+            <strong>Subtotal:</strong> ₹{formatIN(displaySubtotal)}
           </p>
-          {totalDiscount > 0 && (
+
+          {displayDiscount > 0 && (
             <p style={{ color: "green" }}>
-              <strong>Discount:</strong> -₹{formatIN(totalDiscount)}
+              <strong>Discount:</strong> -₹{formatIN(displayDiscount)}
             </p>
           )}
           <p style={{ fontSize: "16px", fontWeight: "bold" }}>
@@ -169,6 +200,7 @@ const LabelBill = React.forwardRef<HTMLDivElement, LabelBillProps>(
             height={60}
             displayValue={true}
             className="max-w-full"
+            onBase64={(b64) => onBarcode?.(b64)}
           />
         </div>
 
