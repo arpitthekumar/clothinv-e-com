@@ -3,18 +3,34 @@
 -- ===========================================================================
 -- This is the ONLY SQL file needed to setup the entire database
 -- Run this in Supabase SQL editor to initialize all tables
+-- Ensure required extensions are installed (pgcrypto for gen_random_uuid)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ===========================================================================
 
 -- ============================
 -- ENUM / TYPE DEFINITIONS
 -- ============================
-CREATE TYPE user_role AS ENUM ('super_admin','admin','employee','customer');
-CREATE TYPE visibility_enum AS ENUM ('online','offline','both');
-CREATE TYPE approval_status AS ENUM ('pending','approved','rejected');
-CREATE TYPE order_source_enum AS ENUM ('pos','online');
-CREATE TYPE order_status_enum AS ENUM ('created','packed','shipped','delivered','cancelled');
-CREATE TYPE payment_status_enum AS ENUM ('created','authorized','captured','failed','refunded');
-CREATE TYPE order_payment_status AS ENUM ('pending','paid','failed','refunded');
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+  CREATE TYPE user_role AS ENUM ('super_admin','admin','employee','customer');
+END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'visibility_enum') THEN
+  CREATE TYPE visibility_enum AS ENUM ('online','offline','both');
+END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'approval_status') THEN
+  CREATE TYPE approval_status AS ENUM ('pending','approved','rejected');
+END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_source_enum') THEN
+  CREATE TYPE order_source_enum AS ENUM ('pos','online');
+END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status_enum') THEN
+  CREATE TYPE order_status_enum AS ENUM ('created','packed','shipped','delivered','cancelled');
+END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status_enum') THEN
+  CREATE TYPE payment_status_enum AS ENUM ('created','authorized','captured','failed','refunded');
+END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_payment_status') THEN
+  CREATE TYPE order_payment_status AS ENUM ('pending','paid','failed','refunded');
+END IF; END $$;
 
 
 -- ============================
@@ -411,7 +427,7 @@ ALTER TABLE sync_status ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "sync_status_super_admin_only" ON sync_status
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'super_admin')
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND u.role = 'super_admin')
   );
 
 ALTER TABLE merchant_requests ENABLE ROW LEVEL SECURITY;
@@ -429,23 +445,23 @@ CREATE POLICY "public_select_active_promotions" ON promotions
 
 CREATE POLICY "manage_promotions_store_staff_or_super" ON promotions
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotions.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotions.store_id)))
   ) WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotions.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotions.store_id)))
   );
 
 -- Promotion targets: visible when parent promotion is active or to store staff
 CREATE POLICY "select_promotion_targets_public_or_store" ON promotion_targets
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM promotions p WHERE p.id = promotion_targets.promotion_id AND p.active = TRUE)
-    OR EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND (promotion_targets.store_id IS NULL OR u.store_id = promotion_targets.store_id))))
+    OR EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND (promotion_targets.store_id IS NULL OR u.store_id = promotion_targets.store_id))))
   );
 
 CREATE POLICY "manage_promotion_targets_store_staff_or_super" ON promotion_targets
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotion_targets.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotion_targets.store_id)))
   ) WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotion_targets.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = promotion_targets.store_id)))
   );
 
 -- Coupons: public select for active coupons; management by store staff or super_admin
@@ -454,9 +470,9 @@ CREATE POLICY "public_select_active_coupons" ON discount_coupons
 
 CREATE POLICY "manage_coupons_store_staff_or_super" ON discount_coupons
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = discount_coupons.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = discount_coupons.store_id)))
   ) WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = discount_coupons.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = discount_coupons.store_id)))
   );
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
@@ -471,24 +487,24 @@ CREATE POLICY "public_select_online_products" ON products
 
 CREATE POLICY "select_products_store_staff_or_super" ON products
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR (u.store_id = products.store_id AND (u.role IN ('admin','employee')))))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.store_id = products.store_id AND (u.role IN ('admin','employee')))))
   );
 
 CREATE POLICY "insert_products_store_admin_or_super" ON products
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = products.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = products.store_id)))
   );
 
 CREATE POLICY "update_products_store_staff_or_super" ON products
   FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR (u.store_id = products.store_id AND (u.role IN ('admin','employee')))))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.store_id = products.store_id AND (u.role IN ('admin','employee')))))
   ) WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR (u.store_id = products.store_id AND (u.role IN ('admin','employee')))))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.store_id = products.store_id AND (u.role IN ('admin','employee')))))
   );
 
 CREATE POLICY "delete_products_store_admin_or_super" ON products
   FOR DELETE USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = products.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = products.store_id)))
   );
 
 -- ==================== Categories ====================
@@ -497,7 +513,7 @@ CREATE POLICY "public_select_online_categories" ON categories
 
 CREATE POLICY "select_categories_store_staff_or_super" ON categories
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (
       u.role = 'super_admin' OR (
         (u.role IN ('admin','employee')) AND (categories.store_id IS NULL OR u.store_id = categories.store_id)
       )
@@ -506,25 +522,25 @@ CREATE POLICY "select_categories_store_staff_or_super" ON categories
 
 CREATE POLICY "insert_categories_store_admin_or_super" ON categories
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (
       u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = categories.store_id)
     ))
   );
 
 CREATE POLICY "update_categories_store_admin_or_super" ON categories
   FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (
       u.role = 'super_admin' OR (u.store_id = categories.store_id AND (u.role IN ('admin','employee')))
     ))
   ) WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (
       u.role = 'super_admin' OR (u.store_id = categories.store_id AND (u.role IN ('admin','employee')))
     ))
   );
 
 CREATE POLICY "delete_categories_store_admin_or_super" ON categories
   FOR DELETE USING (
-    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (
       u.role = 'super_admin' OR (u.store_id = categories.store_id AND (u.role IN ('admin','employee')))
     ))
   );
@@ -533,65 +549,70 @@ CREATE POLICY "delete_categories_store_admin_or_super" ON categories
 CREATE POLICY "insert_orders_customers_or_staff" ON orders
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND (
-      (EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND u.role = 'customer' AND orders.customer_id = auth.uid())) OR
-      (EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND ((u.role IN ('admin','employee')) AND u.store_id = orders.store_id))) OR
-      (EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'super_admin'))
+      (EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND u.role = 'customer' AND orders.customer_id = auth.uid()::text)) OR
+      (EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND ((u.role IN ('admin','employee')) AND u.store_id = orders.store_id))) OR
+      (EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND u.role = 'super_admin'))
     )
   );
 
 CREATE POLICY "select_orders_customer_store_staff_or_super" ON orders
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND (
-      orders.customer_id = auth.uid() OR
-      EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND (u.role IN ('admin','employee')))))
+      orders.customer_id = auth.uid()::text OR
+      EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND (u.role IN ('admin','employee')))))
     )
   );
 
 CREATE POLICY "update_orders_status_store_staff_or_super" ON orders
   FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND u.role IN ('admin','employee'))))
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND u.role IN ('admin','employee'))))
   ) WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND u.role IN ('admin','employee'))))
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND u.role IN ('admin','employee'))))
   );
 
 -- customers_update_self_orders_only removed: customers must NOT be allowed to update or delete orders via RLS; only store staff (status changes) and super_admin may modify orders.
 
 CREATE POLICY "delete_orders_super_admin_only" ON orders
   FOR DELETE USING (
-    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'super_admin')
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND u.role = 'super_admin')
   );
 
 -- ==================== Sales (POS) ====================
 CREATE POLICY "insert_sales_store_staff_or_super" ON sales
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.role IN ('admin','employee') AND u.store_id = sales.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR (u.role IN ('admin','employee') AND u.store_id = sales.store_id)))
   );
 
 CREATE POLICY "select_sales_customer_store_staff_or_super" ON sales
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND (
-      (sales.customer_id = auth.uid()) OR
-      EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR (u.store_id = sales.store_id AND (u.role IN ('admin','employee')))))
+      (sales.customer_id = auth.uid()::text) OR
+      EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.store_id = sales.store_id AND (u.role IN ('admin','employee')))))
     ) AND (sales.deleted IS FALSE OR sales.deleted IS NULL)
   );
 
 CREATE POLICY "modify_sales_store_admin_or_super" ON sales
-  FOR UPDATE, DELETE USING (
-    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = sales.store_id)))
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = sales.store_id)))
+  );
+
+CREATE POLICY "delete_sales_store_admin_or_super" ON sales
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR ((u.role IN ('admin','employee')) AND u.store_id = sales.store_id)))
   );
 
 -- ==================== Payments ====================
 CREATE POLICY "payments_insert_store_staff_or_super" ON payments
   FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR (u.role IN ('admin','employee') AND u.store_id = payments.store_id)))
+    EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.role IN ('admin','employee') AND u.store_id = payments.store_id)))
   );
 
 CREATE POLICY "payments_select_store_staff_or_super_or_owner" ON payments
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND (
-      EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid() OR u.id = auth.uid()) AND (u.role = 'super_admin' OR (u.store_id = payments.store_id AND (u.role IN ('admin','employee')))))
-      OR EXISTS (SELECT 1 FROM orders o WHERE o.id = payments.order_id AND o.customer_id = auth.uid())
-      OR EXISTS (SELECT 1 FROM sales s WHERE s.id = payments.sale_id AND s.customer_id = auth.uid())
+      EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.store_id = payments.store_id AND (u.role IN ('admin','employee')))))
+      OR EXISTS (SELECT 1 FROM orders o WHERE o.id = payments.order_id AND o.customer_id = auth.uid()::text)
+      OR EXISTS (SELECT 1 FROM sales s WHERE s.id = payments.sale_id AND s.customer_id = auth.uid()::text)
     )
   );
 
