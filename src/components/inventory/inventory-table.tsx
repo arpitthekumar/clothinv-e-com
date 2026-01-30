@@ -9,14 +9,19 @@ import { InventoryHeader } from "./inventory-header";
 import { InventoryRow } from "./inventory-row";
 import { InventorySkeleton } from "./inventory-skeleton";
 import { InventoryPagination } from "./inventory-pagination";
+import { useAuth } from "@/hooks/use-auth";
 
 export function InventoryTable() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showTrash, setShowTrash] = useState(false);
+  // Only Merchant (admin) can add/edit; Super Admin has read-only + permanent delete only.
+  const canAddProduct = user?.role === "admin";
+  const canEditProduct = user?.role === "admin";
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products", { includeDeleted: showTrash }],
@@ -113,6 +118,7 @@ export function InventoryTable() {
             showTrash={showTrash}
             setShowTrash={setShowTrash}
             setShowAddModal={setShowAddModal}
+            canAddProduct={canAddProduct}
           />
         </CardHeader>
 
@@ -146,7 +152,8 @@ export function InventoryTable() {
                       categories={categories}
                       showTrash={showTrash}
                       stats={productStats.get(product.id)}
-                      onEdit={(p) => setEditProduct(p)}
+                      onEdit={canEditProduct ? (p) => setEditProduct(p) : undefined}
+                      canEditProduct={canEditProduct}
                     />
                   ))
                 )}

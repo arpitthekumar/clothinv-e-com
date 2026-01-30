@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function AuthPage() {
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl") ?? "";
   const { user, loginMutation } = useAuth();
 
   const loginForm = useForm<LoginFormValues>({
@@ -31,11 +34,16 @@ export default function AuthPage() {
 
 
   if (user) {
-    if (user.role === "admin") {
-      redirect("/");
-    } else {
-      redirect("/pos");
+    if (returnUrl && returnUrl.startsWith("/store")) {
+      redirect(returnUrl);
     }
+    if (user.role === "super_admin" || user.role === "admin") {
+      redirect("/");
+    }
+    if (user.role === "customer") {
+      redirect("/store");
+    }
+    redirect("/pos");
   }
 
   const onLoginSubmit = (data: LoginFormValues) => {

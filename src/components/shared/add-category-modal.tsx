@@ -22,12 +22,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { insertCategorySchema } from "@shared/schema";
+import { insertCategorySchema, CATEGORY_VISIBILITY } from "@shared/schema";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -62,12 +63,20 @@ export function AddCategoryModal({
       name: "",
       description: "",
       color: "white",
+      visibility: "offline",
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await apiRequest("POST", "/api/categories", data);
+      const visibility = data.visibility ?? "offline";
+      const payload = {
+        ...data,
+        visibility,
+        // Online categories require Super Admin approval; default offline is approved.
+        approvalStatus: visibility === "online" ? "pending" : "approved",
+      };
+      const response = await apiRequest("POST", "/api/categories", payload);
       return await response.json();
     },
     onSuccess: (newCategory) => {
@@ -147,6 +156,34 @@ export function AddCategoryModal({
                       data-testid="textarea-category-description"
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="visibility"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Visibility</FormLabel>
+                  <Select
+                    value={field.value ?? "offline"}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CATEGORY_VISIBILITY.map((v) => (
+                        <SelectItem key={v} value={v}>
+                          {v === "online" ? "Online (requires Super Admin approval)" : "Offline (POS only)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

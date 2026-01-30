@@ -18,6 +18,8 @@ export interface IStorage {
   updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   getUsers(): Promise<User[]>;
+  /** Users belonging to a store (admin sees only their store's users). */
+  getUsersByStore(storeId: string): Promise<User[]>;
 
   getCategories(): Promise<Category[]>;
   /** Categories visible on store (visibility=online, approval_status=approved) */

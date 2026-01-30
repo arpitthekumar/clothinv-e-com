@@ -17,7 +17,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const params = await context.params;
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") return NextResponse.json({}, { status: 403 });
 
   try {
     const body = await req.json();
@@ -73,7 +73,7 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ id:
   const params = await context.params;
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") return NextResponse.json({}, { status: 403 });
 
   const ok = await storage.deleteProduct(params.id);
   if (!ok) return NextResponse.json({}, { status: 404 });
@@ -84,7 +84,7 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ id:
 //   const params = await context.params;
 //   const auth = await requireAuth();
 //   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-//   if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+//   if (auth.user.role !== "admin" && auth.user.role !== "super_admin") return NextResponse.json({}, { status: 403 });
 
 //   const { pathname } = new URL(req.url);
 //   if (pathname.endsWith('/restore')) {

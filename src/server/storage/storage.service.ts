@@ -26,6 +26,8 @@ import * as promotionsImpl from "./impl/promotions.impl";
 import * as reportsImpl from "./impl/reports.impl";
 import * as paymentsImpl from "./impl/payments.impl";
 import * as couponsImpl from "./impl/coupons.impl";
+import * as merchantImpl from "./impl/merchant.impl";
+import * as storesImpl from "./impl/stores.impl";
 
 function getClient() {
   const sb = getSupabaseServer();
@@ -51,6 +53,13 @@ export class SupabaseStorage implements IStorage {
     usersImpl.updateUser(this.client, id, user);
   deleteUser = (id: string) => usersImpl.deleteUser(this.client, id);
   getUsers = () => usersImpl.getUsers(this.client);
+  getUsersByStore = (storeId: string) => usersImpl.getUsersByStore(this.client, storeId);
+
+  // Stores (merchant approval creates store)
+  createStore = (payload: { name: string; ownerId: string }) =>
+    storesImpl.createStore(this.client, payload);
+  getStoreByOwnerId = (ownerId: string) =>
+    storesImpl.getStoreByOwnerId(this.client, ownerId);
 
   // Categories
   getCategories = () => categoriesImpl.getCategories(this.client);
@@ -160,4 +169,14 @@ export class SupabaseStorage implements IStorage {
     couponsImpl.updateDiscountCoupon(this.client, id, coupon);
   deleteDiscountCoupon = (id: string) =>
     couponsImpl.deleteDiscountCoupon(this.client, id);
+
+  // Merchant requests (Super Admin governance)
+  getMerchantRequests = (status?: "pending" | "approved" | "rejected") =>
+    merchantImpl.getMerchantRequests(this.client, status);
+  createMerchantRequest = (data: import("@shared/schema").InsertMerchantRequest) =>
+    merchantImpl.createMerchantRequest(this.client, data);
+  updateMerchantRequest = (
+    id: string,
+    data: { status: string; reviewedBy?: string }
+  ) => merchantImpl.updateMerchantRequest(this.client, id, data);
 }

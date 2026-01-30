@@ -20,7 +20,10 @@ export async function GET(req: NextRequest) {
   const end = url.searchParams.get("end");
   const category = url.searchParams.get("category");
 
-  const userId = auth.user.role === "admin" ? null : auth.user.id;
+  const userId =
+    auth.user.role === "admin" || auth.user.role === "super_admin"
+      ? null
+      : auth.user.id;
 
   // 🚀 Call filtered storage method
   const { data, nextCursor } = await storage.getSalesFiltered({

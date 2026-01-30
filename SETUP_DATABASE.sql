@@ -6,6 +6,16 @@
 -- ===========================================================================
 
 -- ============================
+-- 0. STORES TABLE (merchant/store — one per approved merchant)
+-- ============================
+CREATE TABLE IF NOT EXISTS stores (
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  name TEXT NOT NULL,
+  owner_id VARCHAR(36) NOT NULL UNIQUE, -- admin user id (one store per merchant)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================
 -- 1. USERS TABLE
 -- ============================
 CREATE TABLE IF NOT EXISTS users (
@@ -14,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'employee', -- super_admin | admin | employee | customer
   full_name TEXT NOT NULL,
+  store_id VARCHAR(36) REFERENCES stores(id), -- admin/employee: their store; super_admin/customer: NULL
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -37,7 +48,7 @@ CREATE TABLE IF NOT EXISTS products (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
   name TEXT NOT NULL,
   sku TEXT NOT NULL UNIQUE,
-  category_id VARCHAR(36) REFERENCES categories(id),
+  category_id VARCHAR(36) REFERENCES categories(id), -- primary/legacy category
   description TEXT,
   price DECIMAL(10, 2) NOT NULL,
   buying_price DECIMAL(10, 2),
@@ -45,11 +56,21 @@ CREATE TABLE IF NOT EXISTS products (
   stock INTEGER NOT NULL DEFAULT 0,
   min_stock INTEGER DEFAULT 5,
   barcode TEXT,
+  image TEXT, -- base64 or URL; main product image
   visibility TEXT NOT NULL DEFAULT 'offline', -- online | offline | both
   deleted BOOLEAN DEFAULT FALSE,
   deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================
+-- 3b. PRODUCT_CATEGORIES (many-to-many: product can have multiple categories)
+-- ============================
+CREATE TABLE IF NOT EXISTS product_categories (
+  product_id VARCHAR(36) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  category_id VARCHAR(36) NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  PRIMARY KEY (product_id, category_id)
 );
 
 -- ============================
@@ -242,8 +263,12 @@ CREATE TABLE IF NOT EXISTS payments (
 -- INDEXES FOR PERFORMANCE
 -- ===========================================================================
 
+-- Stores
+CREATE INDEX idx_stores_owner_id ON stores(owner_id);
+
 -- Users
 CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_store_id ON users(store_id);
 
 -- Categories
 CREATE INDEX idx_categories_name ON categories(name);
@@ -253,6 +278,10 @@ CREATE INDEX idx_products_sku ON products(sku);
 CREATE INDEX idx_products_barcode ON products(barcode);
 CREATE INDEX idx_products_category_id ON products(category_id);
 CREATE INDEX idx_products_deleted ON products(deleted);
+
+-- Product categories (many-to-many)
+CREATE INDEX idx_product_categories_product_id ON product_categories(product_id);
+CREATE INDEX idx_product_categories_category_id ON product_categories(category_id);
 
 -- Sales
 CREATE INDEX idx_sales_user_id ON sales(user_id);
@@ -298,9 +327,11 @@ CREATE INDEX idx_payments_status ON payments(status);
 -- ===========================================================================
 -- Enable RLS on all tables (uncomment if needed)
 /*
+ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;

@@ -35,8 +35,7 @@ export default function AdminUsersPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Gate on client; server gate should be added if needed later
-    if (user && user.role !== "admin") {
+    if (user && user.role !== "admin" && user.role !== "super_admin") {
       window.location.href = "/";
     }
   }, [user]);
@@ -158,6 +157,9 @@ export default function AdminUsersPage() {
                   <SelectContent>
                     <SelectItem value="employee">Employee</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
+                    {user?.role === "super_admin" && (
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 <div className="md:col-span-5 flex justify-end">
@@ -325,6 +327,9 @@ export default function AdminUsersPage() {
                         <SelectContent>
                           <SelectItem value="employee">Employee</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
+                          {user?.role === "super_admin" && (
+                            <SelectItem value="super_admin">Super Admin</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

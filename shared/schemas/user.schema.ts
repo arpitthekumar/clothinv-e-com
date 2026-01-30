@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull().default("employee"),
   fullName: text("full_name").notNull(),
+  storeId: varchar("store_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -23,6 +24,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   role: true,
   fullName: true,
+  storeId: true,
 });
 
 export type User = typeof users.$inferSelect;

@@ -24,6 +24,8 @@ export function mapProductToDb(product: any): any {
     'stock',
     'minStock',
     'barcode',
+    'image',
+    'visibility',
     'createdAt',
     'updatedAt',
     'deleted',

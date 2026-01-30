@@ -28,6 +28,8 @@ interface InventoryRowProps {
   categories: any[];
   showTrash: boolean;
   onEdit?: (product: Product) => void;
+  /** When false (e.g. employee), Edit/Delete/Label actions are hidden. */
+  canEditProduct?: boolean;
   stats?: {
     revenue: number;
     cost: number;
@@ -41,6 +43,7 @@ export function InventoryRow({
   categories,
   showTrash,
   onEdit,
+  canEditProduct = true,
   stats,
 }: InventoryRowProps) {
   const { toast } = useToast();
@@ -49,9 +52,8 @@ export function InventoryRow({
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState(false);
   const { user } = useAuth();
 
-  // ✅ Role checks
-  const isSystemAdmin =
-    user?.role === "admin" && user?.username?.toLowerCase() === "admin";
+  // ✅ Role checks — only Super Admin can permanent delete; Admin cannot.
+  const canPermanentDelete = user?.role === "super_admin";
   const isAdmin = user?.role === "admin";
   const isEmployee = user?.role === "employee";
 
@@ -181,7 +183,7 @@ export function InventoryRow({
                   <RotateCcw className="h-4 w-4 text-blue-600" />
                 </Button>
 
-                {isSystemAdmin && (
+                {canPermanentDelete && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -193,29 +195,31 @@ export function InventoryRow({
               </>
             ) : (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEdit?.(product)}
-                >
-                  <Edit className="h-4 w-4 text-blue-600" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowLabel(true)}
-                >
-                  <QrCode className="h-4 w-4 text-green-600" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </Button>
+                {canEditProduct && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit?.(product)}
+                    >
+                      <Edit className="h-4 w-4 text-blue-600" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowLabel(true)}
+                    >
+                      <QrCode className="h-4 w-4 text-green-600" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmDelete(true)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </>
+                )}
 
                 <LabelPreviewDialog
                   open={showLabel}
@@ -321,8 +325,8 @@ export function InventoryRow({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 🧨 Permanent Delete confirmation */}
-      {isSystemAdmin && (
+      {/* 🧨 Permanent Delete — Super Admin only (platform control) */}
+      {canPermanentDelete && (
         <AlertDialog
           open={confirmPermanentDelete}
           onOpenChange={setConfirmPermanentDelete}

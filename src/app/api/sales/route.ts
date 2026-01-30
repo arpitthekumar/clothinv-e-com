@@ -11,10 +11,13 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const includeDeleted = url.searchParams.get("includeDeleted") === "true";
 
+  // Customer: online order history. Admin/Super Admin: all sales. Employee: own POS sales.
   const sales =
-    auth.user.role === "admin"
-      ? await storage.getSales(includeDeleted)
-      : await storage.getSalesByUser(auth.user.id, includeDeleted);
+    auth.user.role === "customer"
+      ? await storage.getSalesByCustomer(auth.user.id)
+      : auth.user.role === "admin" || auth.user.role === "super_admin"
+        ? await storage.getSales(includeDeleted)
+        : await storage.getSalesByUser(auth.user.id, includeDeleted);
 
   return NextResponse.json(sales);
 }

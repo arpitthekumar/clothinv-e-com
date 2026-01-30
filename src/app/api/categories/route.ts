@@ -14,7 +14,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  // Employee: no category creation. Admin/Super Admin only.
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return NextResponse.json({}, { status: 403 });
+  }
 
   try {
     const data = insertCategorySchema.parse(await req.json());
@@ -31,7 +34,9 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return NextResponse.json({}, { status: 403 });
+  }
 
   try {
     const { searchParams } = new URL(req.url);
@@ -75,7 +80,9 @@ export async function DELETE(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return NextResponse.json({}, { status: 403 });
+  }
 
   try {
     const body = await req.json();

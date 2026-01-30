@@ -29,6 +29,7 @@ export const products = pgTable("products", {
   stock: integer("stock").notNull().default(0),
   minStock: integer("min_stock").default(5),
   barcode: text("barcode"),
+  image: text("image"), // base64 or URL
   visibility: text("visibility").notNull().default("offline"),
   deleted: boolean("deleted").default(false),
   deletedAt: timestamp("deleted_at"),
@@ -47,6 +48,7 @@ export const insertProductSchema = createInsertSchema(products).pick({
   stock: true,
   minStock: true,
   barcode: true,
+  image: true,
   visibility: true,
 });
 

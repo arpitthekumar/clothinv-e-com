@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { insertProductSchema, type Product } from "@shared/schema";
+import { insertProductSchema, type Product, PRODUCT_VISIBILITY } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AddCategoryModal } from "@/components/shared/add-category-modal";
@@ -35,6 +35,13 @@ import {
   DialogHeader as CategoryDialogHeader,
   DialogTitle as CategoryDialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search } from "lucide-react";
 
 const formSchema = insertProductSchema.extend({
@@ -46,6 +53,8 @@ const formSchema = insertProductSchema.extend({
   size: z.string().optional(),
   barcode: z.string().optional(),
   categoryId: z.string().optional(),
+  visibility: z.enum(PRODUCT_VISIBILITY).optional(),
+  image: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -116,6 +125,8 @@ export function AddProductModal({
           ? String(initialProduct.minStock)
           : "0",
       barcode: (initialProduct?.barcode as string) || "",
+      visibility: (initialProduct as any)?.visibility ?? "offline",
+      image: (initialProduct as any)?.image ?? "",
     },
   });
 
@@ -138,6 +149,8 @@ export function AddProductModal({
           ? String(initialProduct.minStock)
           : "0",
       barcode: (initialProduct?.barcode as string) || "",
+      visibility: (initialProduct as any)?.visibility ?? "offline",
+      image: (initialProduct as any)?.image ?? "",
     };
     form.reset(values);
   }, [initialProduct, isOpen]);
@@ -192,6 +205,8 @@ export function AddProductModal({
         description: data.description || "No description provided",
         size: data.size || null,
         barcode: data.barcode || null,
+        visibility: data.visibility ?? "offline",
+        image: data.image || null,
       };
 
       // Only include buyingPrice if it has a value (omit if empty to avoid validation issues)
@@ -527,6 +542,73 @@ export function AddProductModal({
                         data-testid="input-product-barcode"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Product image (base64 or URL) — optional for e-commerce display */}
+              <FormField
+                control={form.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image (optional)</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Paste image URL or leave empty"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Or upload: image is stored as base64
+                        </p>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="cursor-pointer"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const result = reader.result as string;
+                              if (result?.startsWith("data:")) form.setValue("image", result);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Product visibility: online = store only, offline = POS only, both = both. Inventory is shared. */}
+              <FormField
+                control={form.control}
+                name="visibility"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Visibility</FormLabel>
+                    <Select
+                      value={field.value ?? "offline"}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Where to show" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PRODUCT_VISIBILITY.map((v) => (
+                          <SelectItem key={v} value={v}>
+                            {v === "online" ? "Online store only" : v === "offline" ? "POS only" : "Both"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

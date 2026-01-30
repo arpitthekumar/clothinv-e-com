@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Header } from "@/components/shared/header";
@@ -13,8 +14,18 @@ import { normalizeItems } from "@/lib/json";
 import { startOfDay, endOfDay, subDays, subMonths } from "date-fns";
 import { Sale } from "@shared/schema";
 import AnalyticsCharts from "../reports/AnalyticsCharts";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Reports() {
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+  // Employee: no access to reports; redirect to dashboard.
+  useEffect(() => {
+    if (!isLoading && user?.role === "employee") {
+      router.replace("/");
+    }
+  }, [user?.role, isLoading, router]);
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [reportType, setReportType] = useState("daily");
   const [dateRange, setDateRange] = useState("today");
@@ -25,7 +36,7 @@ export default function Reports() {
       setSidebarOpen(false);
     }
   }, []);
-  const { data: sales = [], isLoading } = useQuery<Sale[]>({
+  const { data: sales = [], isLoading: salesLoading } = useQuery<Sale[]>({
     queryKey: ["/api/sales"],
   });
 
@@ -201,7 +212,7 @@ export default function Reports() {
 
           <SalesTable
             sales={filteredSales}
-            loading={isLoading}
+            loading={salesLoading}
             products={products}
           />
         </main>

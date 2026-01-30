@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCategorySchema } from "@shared/schema";
+import { insertCategorySchema, CATEGORY_VISIBILITY } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +41,9 @@ interface EditCategoryModalProps {
     name: string;
     description?: string | null;
     color: string;
+    visibility?: string;
+    approval_status?: string;
+    approvalStatus?: string;
   } | null;
 }
 
@@ -57,22 +60,28 @@ export function EditCategoryModal({
     onClose();
   };
 
+  const approvalStatus = category?.approvalStatus ?? category?.approval_status ?? "approved";
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     values: {
       name: category?.name ?? "",
       description: category?.description ?? "",
       color: category?.color ?? "white",
+      visibility: (category?.visibility === "online" ? "online" : "offline") as "online" | "offline",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof schema>) => {
     if (!category) return; // TS safe
 
-    const res = await apiRequest("PUT", "/api/categories", {
+    // When merchant sets visibility to "online", request Super Admin approval (pending).
+    const visibility = values.visibility ?? "offline";
+    const payload = {
       id: category.id,
       ...values,
-    });
+      approvalStatus: visibility === "online" ? "pending" : "approved",
+    };
+    const res = await apiRequest("PUT", "/api/categories", payload);
 
     if (!res.ok) {
       const error = await res.json();
@@ -96,13 +105,20 @@ export function EditCategoryModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Category</DialogTitle>
-          <DialogDescription>Update your category details.</DialogDescription>
-        </DialogHeader>
+<DialogHeader>
+        <DialogTitle>Edit Category</DialogTitle>
+        <DialogDescription>
+          Update your category details. Setting visibility to &quot;Online&quot; submits a request for Super Admin approval.
+        </DialogDescription>
+      </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {approvalStatus === "pending" && (
+              <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded">
+                Pending approval for online visibility.
+              </p>
+            )}
             {/* Name */}
             <FormField
               control={form.control}
@@ -131,6 +147,34 @@ export function EditCategoryModal({
                       placeholder="Optional description"
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Visibility: online requires Super Admin approval */}
+            <FormField
+              control={form.control}
+              name="visibility"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Visibility</FormLabel>
+                  <Select
+                    value={field.value ?? "offline"}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CATEGORY_VISIBILITY.map((v) => (
+                        <SelectItem key={v} value={v}>
+                          {v === "online" ? "Online (request approval)" : "Offline (POS only)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

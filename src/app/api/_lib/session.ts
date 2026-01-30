@@ -29,4 +29,34 @@ export async function requireAuth() {
   return { ok: true as const, user: session.user, session };
 }
 
+/** Require super_admin role (platform governance). */
+export async function requireSuperAdmin() {
+  const auth = await requireAuth();
+  if (!auth.ok) return { ok: false as const };
+  if (auth.user.role !== "super_admin") {
+    return { ok: false as const, forbidden: true as const };
+  }
+  return { ok: true as const, user: auth.user, session: auth.session };
+}
+
+/** Require admin or super_admin (merchant/store management). */
+export async function requireAdmin() {
+  const auth = await requireAuth();
+  if (!auth.ok) return { ok: false as const };
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return { ok: false as const, forbidden: true as const };
+  }
+  return { ok: true as const, user: auth.user, session: auth.session };
+}
+
+/** Require one of the given roles. */
+export async function requireRole(roles: string[]) {
+  const auth = await requireAuth();
+  if (!auth.ok) return { ok: false as const };
+  if (!roles.includes(auth.user.role)) {
+    return { ok: false as const, forbidden: true as const };
+  }
+  return { ok: true as const, user: auth.user, session: auth.session };
+}
+
 
