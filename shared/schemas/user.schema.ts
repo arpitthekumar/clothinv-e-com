@@ -13,6 +13,7 @@ export const users = pgTable("users", {
     .default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  authUid: text("auth_uid").unique(), // optional: map to Supabase auth.uid()
   role: text("role").notNull().default("employee"),
   fullName: text("full_name").notNull(),
   storeId: varchar("store_id"),
@@ -22,9 +23,12 @@ export const users = pgTable("users", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  authUid: true,
   role: true,
   fullName: true,
   storeId: true,
+}).extend({
+  role: z.enum(USER_ROLES as any),
 });
 
 export type User = typeof users.$inferSelect;

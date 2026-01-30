@@ -92,14 +92,14 @@ export interface IStorage {
     userId: string;
   }): Promise<{ salesReturnId: string }>;
 
-  getPromotions(): Promise<import("@shared/schema").Promotion[]>;
+  getPromotions(storeId?: string): Promise<import("@shared/schema").Promotion[]>;
   createPromotion(
     promo: import("@shared/schema").InsertPromotion
   ): Promise<import("@shared/schema").Promotion>;
   addPromotionTarget(
     target: import("@shared/schema").InsertPromotionTarget
   ): Promise<import("@shared/schema").PromotionTarget>;
-  getPromotionTargets(): Promise<import("@shared/schema").PromotionTarget[]>;
+  getPromotionTargets(storeId?: string): Promise<import("@shared/schema").PromotionTarget[]>; 
 
   getNotSellingProducts(params: {
     sinceDays: number;
@@ -154,7 +154,7 @@ export interface IStorage {
     data: Partial<import("@shared/schema").InsertPayment>
   ): Promise<import("@shared/schema").Payment | undefined>;
 
-  getDiscountCoupons(): Promise<import("@shared/schema").DiscountCoupon[]>;
+  getDiscountCoupons(storeId?: string): Promise<import("@shared/schema").DiscountCoupon[]>;
   createDiscountCoupon(
     coupon: import("@shared/schema").InsertDiscountCoupon
   ): Promise<import("@shared/schema").DiscountCoupon>;

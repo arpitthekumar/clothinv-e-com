@@ -137,13 +137,13 @@ export class SupabaseStorage implements IStorage {
   ) => returnsImpl.createSalesReturn(this.client, params);
 
   // Promotions
-  getPromotions = () => promotionsImpl.getPromotions(this.client);
+  getPromotions = (storeId?: string) => promotionsImpl.getPromotions(this.client, storeId);
   createPromotion = (promo: any) =>
     promotionsImpl.createPromotion(this.client, promo);
   addPromotionTarget = (target: any) =>
     promotionsImpl.addPromotionTarget(this.client, target);
-  getPromotionTargets = () =>
-    promotionsImpl.getPromotionTargets(this.client);
+  getPromotionTargets = (storeId?: string) =>
+    promotionsImpl.getPromotionTargets(this.client, storeId);
 
   // Reports
   getNotSellingProducts = (
@@ -173,7 +173,7 @@ export class SupabaseStorage implements IStorage {
     ordersImpl.updateOrderStatus(this.client, id, status, processedBy);
 
   // Coupons
-  getDiscountCoupons = () => couponsImpl.getDiscountCoupons(this.client);
+  getDiscountCoupons = (storeId?: string) => couponsImpl.getDiscountCoupons(this.client, storeId);
   createDiscountCoupon = (coupon: any) =>
     couponsImpl.createDiscountCoupon(this.client, coupon);
   getDiscountCouponByName = (name: string) =>

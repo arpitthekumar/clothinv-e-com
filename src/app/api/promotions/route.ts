@@ -6,7 +6,9 @@ import { insertPromotionSchema, insertPromotionTargetSchema } from "@shared/sche
 export async function GET() {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  const promos = await storage.getPromotions();
+  // Admins should see promotions for their store; others see platform/active promos
+  const storeId = auth.user.role === "admin" && auth.user.storeId ? auth.user.storeId : undefined;
+  const promos = await storage.getPromotions(storeId);
   return NextResponse.json(promos);
 }
 
@@ -18,6 +20,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const promo = insertPromotionSchema.parse(body);
+    // If admin creating promo, scope it to their store. Super admin may leave it platform-wide.
+    if (auth.user.role === "admin" && auth.user.storeId) (promo as any).storeId = auth.user.storeId;
     const created = await storage.createPromotion(promo);
     return NextResponse.json(created, { status: 201 });
   } catch (error: any) {
@@ -33,6 +37,8 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const target = insertPromotionTargetSchema.parse(body);
+    // Auto-assign storeId for merchant admins when not provided
+    if (auth.user.role === "admin" && auth.user.storeId && (!(target as any).storeId)) (target as any).storeId = auth.user.storeId;
     const created = await storage.addPromotionTarget(target);
     return NextResponse.json(created, { status: 201 });
   } catch (error: any) {

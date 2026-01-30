@@ -87,6 +87,10 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
   payment_provider: true,
   payment_status: true,
   status: true,
+}).extend({
+  payment_status: z.enum(["pending", "paid", "failed", "refunded"]),
+  status: z.enum(["created", "packed", "shipped", "delivered", "cancelled"]),
+  order_source: z.enum(["pos", "online"]).optional(),
 });
 
 export type Order = typeof orders.$inferSelect;
@@ -245,16 +249,6 @@ export const insertPaymentSchema = createInsertSchema(payments).pick({
   storeId: true,
   provider: true,
   order_provider_id: true,
-  paymentId: true,
-  status: true,
-  amount: true,
-  method: true,
-});
-
-export const insertPaymentSchema = createInsertSchema(payments).pick({
-  saleId: true,
-  provider: true,
-  orderId: true,
   paymentId: true,
   status: true,
   amount: true,

@@ -12,6 +12,10 @@ function mapFromDb(row: any): any {
     out.fullName = row.full_name;
     delete out.full_name;
   }
+  if (row.auth_uid !== undefined) {
+    out.authUid = row.auth_uid;
+    delete out.auth_uid;
+  }
   return out;
 }
 
@@ -24,6 +28,10 @@ function toDbUser(u: Record<string, unknown>): Record<string, unknown> {
   if (db.fullName !== undefined) {
     db.full_name = db.fullName;
     delete db.fullName;
+  }
+  if ((db as any).authUid !== undefined) {
+    (db as any).auth_uid = (db as any).authUid;
+    delete (db as any).authUid;
   }
   return db;
 }

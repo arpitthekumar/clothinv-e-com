@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
   // Admins: show orders for their store; Super Admin: show all orders (optionally include processed)
   const includeProcessed = url.searchParams.get("includeProcessed") === "true";
   if (auth.user.role === "admin") {
-    const storeId = auth.user.storeId;
+    const storeId = auth.user.storeId ?? undefined;
+    if (!storeId) return NextResponse.json({ error: "Admin has no store assigned" }, { status: 400 });
     const orders = await storage.getOrdersByStore(storeId);
     return NextResponse.json(orders);
   }
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       status: "created",
     };
 
+    const invoiceNumber = (body?.invoice_number as string) || `ORD-${Date.now()}`;
     const data = insertSaleSchema.parse({
       // for validation we re-use insertSaleSchema shape for numeric fields but will call createOrder
       user_id: auth.user.id,
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
       customer_name: orderData.customer_name,
       customer_phone: orderData.customer_phone,
       items: orderData.items,
-      invoice_number: orderData.invoice_number || `ORD-${Date.now()}`,
+      invoice_number: invoiceNumber,
       subtotal: orderData.subtotal,
       tax_percent: orderData.tax_percent,
       tax_amount: orderData.tax_amount,

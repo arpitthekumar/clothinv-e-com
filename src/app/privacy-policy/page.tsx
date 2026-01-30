@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { HomeNavbar } from "@/components/home/HomeNavbar";
+import { Navbar } from "@/components/ui/Navbar";
 import { HomeFooter } from "@/components/home/HomeFooter";
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen flex flex-col">
-      <HomeNavbar />
+      <Navbar />
       <main className="container flex-1 px-4 py-12 max-w-3xl">
         <Link href="/" className="text-sm text-muted-foreground hover:text-foreground mb-6 inline-block">
           ← Back to home

@@ -1,10 +1,12 @@
 import type { SupabaseServerClient } from "../supabase.client";
 
-export async function getDiscountCoupons(client: SupabaseServerClient) {
-  const { data, error } = await client
+export async function getDiscountCoupons(client: SupabaseServerClient, storeId?: string) {
+  let q = client
     .from("discount_coupons")
     .select("*")
     .order("created_at", { ascending: false });
+  if (storeId) q = q.eq("store_id", storeId);
+  const { data, error } = await q;
   if (error) throw error;
   return data as import("@shared/schema").DiscountCoupon[];
 }
@@ -19,6 +21,7 @@ export async function createDiscountCoupon(
     active: (coupon as any).active,
     created_by: (coupon as any).createdBy,
   };
+  if ((coupon as any).storeId !== undefined) payload.store_id = (coupon as any).storeId;
   const { data, error } = await client
     .from("discount_coupons")
     .insert(payload)

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { HomeNavbar } from "@/components/home/HomeNavbar";
+import { Navbar } from "@/components/ui/Navbar";
 import { HomeFooter } from "@/components/home/HomeFooter";
 
 export default function ContactPage() {

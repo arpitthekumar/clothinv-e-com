@@ -4,6 +4,7 @@ import * as salesImpl from "./sales.impl";
 import * as returnsImpl from "./returns.impl";
 import * as productsImpl from "./products.impl";
 import * as stockImpl from "./stock.impl";
+import { ORDER_STATUS } from "@shared/schema";
 
 export async function getOrders(
   client: SupabaseServerClient,
@@ -75,6 +76,8 @@ export async function updateOrderStatus(
   status: string,
   processedBy?: string
 ): Promise<Order | undefined> {
+  // Validate status value
+  if (!ORDER_STATUS.includes(status as any)) throw new Error("Invalid status");
   // Fetch order
   const { data: orderData, error: fetchErr } = await client
     .from("orders")

@@ -23,7 +23,7 @@ export async function GET() {
   // ✅ User stats (employees only)
   const users = await storage.getUsers(); // assuming you have this in storage.ts
   const employees = users.filter(
-    (u) => u.role === "employee" || u.role === "employ"
+    (u) => u.role === "employee"
   );
   const activeEmployees = employees.length;
 

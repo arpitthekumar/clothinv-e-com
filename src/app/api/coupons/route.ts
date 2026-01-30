@@ -7,7 +7,8 @@ export async function GET() {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
 
-  const coupons = await storage.getDiscountCoupons();
+  const storeId = auth.user.role === "admin" && auth.user.storeId ? auth.user.storeId : undefined;
+  const coupons = await storage.getDiscountCoupons(storeId);
   return NextResponse.json(coupons);
 }
 
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
       percentage: percentageNum.toFixed(2),
       active: true,
       createdBy: auth.user.id,
+      storeId: auth.user.role === "admin" && auth.user.storeId ? auth.user.storeId : undefined,
     });
     const created = await storage.createDiscountCoupon(data);
     return NextResponse.json(created, { status: 201 });
