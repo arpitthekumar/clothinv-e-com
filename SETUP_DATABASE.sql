@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
   username TEXT NOT NULL UNIQUE,
   password TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'employee', -- admin or employee
+  role TEXT NOT NULL DEFAULT 'employee', -- super_admin | admin | employee | customer
   full_name TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL UNIQUE,
   description TEXT,
   color TEXT NOT NULL DEFAULT 'white',
+  visibility TEXT NOT NULL DEFAULT 'offline', -- online | offline
+  approval_status TEXT NOT NULL DEFAULT 'approved', -- pending | approved | rejected
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -43,6 +45,7 @@ CREATE TABLE IF NOT EXISTS products (
   stock INTEGER NOT NULL DEFAULT 0,
   min_stock INTEGER DEFAULT 5,
   barcode TEXT,
+  visibility TEXT NOT NULL DEFAULT 'offline', -- online | offline | both
   deleted BOOLEAN DEFAULT FALSE,
   deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -79,6 +82,7 @@ CREATE TABLE IF NOT EXISTS sales (
   total_amount DECIMAL(10, 2) NOT NULL,
   payment_method TEXT NOT NULL DEFAULT 'cash',
   invoice_number TEXT NOT NULL UNIQUE,
+  order_source TEXT NOT NULL DEFAULT 'pos', -- pos | online
   deleted BOOLEAN DEFAULT FALSE,
   deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -148,60 +152,22 @@ CREATE TABLE IF NOT EXISTS sync_status (
 );
 
 -- ============================
--- 11. SUPPLIERS TABLE
+-- 11. MERCHANT REQUESTS (onboarding)
 -- ============================
-CREATE TABLE IF NOT EXISTS suppliers (
+CREATE TABLE IF NOT EXISTS merchant_requests (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-  name TEXT NOT NULL,
-  phone TEXT,
-  email TEXT,
+  user_id VARCHAR(36) NOT NULL,
+  shop_name TEXT NOT NULL,
   address TEXT,
-  notes TEXT,
+  business_details TEXT,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected
+  reviewed_by VARCHAR(36),
+  reviewed_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================
--- 12. SUPPLIER PRODUCTS TABLE
--- ============================
-CREATE TABLE IF NOT EXISTS supplier_products (
-  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-  supplier_id VARCHAR(36) NOT NULL REFERENCES suppliers(id),
-  product_id VARCHAR(36) NOT NULL REFERENCES products(id),
-  supplier_sku TEXT,
-  default_cost DECIMAL(10, 2),
-  lead_time_days INTEGER,
-  active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================
--- 13. PURCHASE ORDERS TABLE
--- ============================
-CREATE TABLE IF NOT EXISTS purchase_orders (
-  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-  supplier_id VARCHAR(36) NOT NULL REFERENCES suppliers(id),
-  status TEXT NOT NULL DEFAULT 'draft', -- draft | ordered | received | closed
-  expected_date TIMESTAMP,
-  received_date TIMESTAMP,
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================
--- 14. PURCHASE ORDER ITEMS TABLE
--- ============================
-CREATE TABLE IF NOT EXISTS purchase_order_items (
-  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-  purchase_order_id VARCHAR(36) NOT NULL REFERENCES purchase_orders(id),
-  product_id VARCHAR(36) NOT NULL REFERENCES products(id),
-  quantity_ordered INTEGER NOT NULL,
-  quantity_received INTEGER NOT NULL DEFAULT 0,
-  unit_cost DECIMAL(10, 2) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================
--- 15. PRODUCT COST HISTORY TABLE
+-- 12. PRODUCT COST HISTORY TABLE
 -- ============================
 CREATE TABLE IF NOT EXISTS product_cost_history (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
@@ -212,7 +178,7 @@ CREATE TABLE IF NOT EXISTS product_cost_history (
 );
 
 -- ============================
--- 16. PRODUCT PRICE HISTORY TABLE
+-- 13. PRODUCT PRICE HISTORY TABLE
 -- ============================
 CREATE TABLE IF NOT EXISTS product_price_history (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
@@ -222,7 +188,7 @@ CREATE TABLE IF NOT EXISTS product_price_history (
 );
 
 -- ============================
--- 17. PROMOTIONS TABLE
+-- 14. PROMOTIONS TABLE
 -- ============================
 CREATE TABLE IF NOT EXISTS promotions (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
@@ -236,7 +202,7 @@ CREATE TABLE IF NOT EXISTS promotions (
 );
 
 -- ============================
--- 18. PROMOTION TARGETS TABLE
+-- 15. PROMOTION TARGETS TABLE
 -- ============================
 CREATE TABLE IF NOT EXISTS promotion_targets (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
@@ -246,7 +212,7 @@ CREATE TABLE IF NOT EXISTS promotion_targets (
 );
 
 -- ============================
--- 19. DISCOUNT COUPONS TABLE
+-- 16. DISCOUNT COUPONS TABLE
 -- ============================
 CREATE TABLE IF NOT EXISTS discount_coupons (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
@@ -258,7 +224,7 @@ CREATE TABLE IF NOT EXISTS discount_coupons (
 );
 
 -- ============================
--- 20. PAYMENTS TABLE (Razorpay, etc.)
+-- 17. PAYMENTS TABLE (Razorpay, etc.)
 -- ============================
 CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
@@ -308,17 +274,9 @@ CREATE INDEX idx_stock_movements_product_id ON stock_movements(product_id);
 CREATE INDEX idx_stock_movements_user_id ON stock_movements(user_id);
 CREATE INDEX idx_stock_movements_type ON stock_movements(type);
 
--- Suppliers
-CREATE INDEX idx_supplier_products_supplier_id ON supplier_products(supplier_id);
-CREATE INDEX idx_supplier_products_product_id ON supplier_products(product_id);
-
--- Purchase Orders
-CREATE INDEX idx_purchase_orders_supplier_id ON purchase_orders(supplier_id);
-CREATE INDEX idx_purchase_orders_status ON purchase_orders(status);
-
--- Purchase Order Items
-CREATE INDEX idx_po_items_po_id ON purchase_order_items(purchase_order_id);
-CREATE INDEX idx_po_items_product_id ON purchase_order_items(product_id);
+-- Merchant Requests
+CREATE INDEX idx_merchant_requests_user_id ON merchant_requests(user_id);
+CREATE INDEX idx_merchant_requests_status ON merchant_requests(status);
 
 -- Cost & Price History
 CREATE INDEX idx_cost_history_product_id ON product_cost_history(product_id);
@@ -350,10 +308,7 @@ ALTER TABLE sales_returns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales_return_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sync_status ENABLE ROW LEVEL SECURITY;
-ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE supplier_products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE purchase_order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merchant_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_cost_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_price_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;

@@ -36,9 +36,10 @@ export async function POST(request: NextRequest) {
       parseFloat(body.discount_value || "0")
     );
 
-    // Prepare sale data
+    // Prepare sale data (POS: order_source = 'pos'; online checkout uses 'online')
     const saleData = {
       user_id: auth.user.id,
+      customer_id: body.customer_id ?? undefined,
       customer_name: body.customer_name || "Walk-in Customer",
       customer_phone: body.customer_phone || "N/A",
       items: saleItems,
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       discount_amount: totals.discountAmount.toFixed(2),
       total_amount: totals.total.toFixed(2),
       payment_method: body.payment_method || "cash",
+      order_source: body.order_source || "pos",
     };
 
     // Validate schema

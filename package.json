@@ -1,6 +1,6 @@
 {
-  "name": "clothinv-new",
-  "version": "0.2.0",
+  "name": "cloth-e-commerce",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
