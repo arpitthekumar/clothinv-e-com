@@ -10,13 +10,16 @@ export async function getCategories(
 }
 
 export async function getCategoriesForStore(
-  client: SupabaseServerClient
+  client: SupabaseServerClient,
+  storeId?: string
 ): Promise<Category[]> {
-  const { data, error } = await client
+  let q = client
     .from("categories")
     .select("*")
     .eq("visibility", "online")
     .eq("approval_status", "approved");
+  if (storeId) q = q.eq("store_id", storeId);
+  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as Category[];
 }

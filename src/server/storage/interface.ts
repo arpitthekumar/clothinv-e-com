@@ -23,7 +23,7 @@ export interface IStorage {
 
   getCategories(): Promise<Category[]>;
   /** Categories visible on store (visibility=online, approval_status=approved) */
-  getCategoriesForStore(): Promise<Category[]>;
+  getCategoriesForStore(storeId?: string): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
   updateCategory(
     id: string,
@@ -37,7 +37,7 @@ export interface IStorage {
   getProductByBarcode(barcode: string): Promise<Product | undefined>;
   getProducts(includeDeleted?: boolean): Promise<Product[]>;
   /** Products visible on e-commerce store (visibility online or both, not deleted) */
-  getProductsForStore(): Promise<Product[]>;
+  getProductsForStore(storeId?: string): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(
     id: string,
@@ -58,6 +58,13 @@ export interface IStorage {
   restoreSale(saleId: string): Promise<boolean>;
   deleteSale(saleId: string): Promise<boolean>;
 
+  // Orders (online e-commerce order lifecycle)
+  getOrders(includeProcessed?: boolean): Promise<import("@shared/schema").Order[]>;
+  getOrderById(id: string): Promise<import("@shared/schema").Order | undefined>;
+  getOrdersByStore(storeId: string): Promise<import("@shared/schema").Order[]>;
+  getOrdersByCustomer(customerId: string): Promise<import("@shared/schema").Order[]>;
+  createOrder(order: import("@shared/schema").InsertOrder): Promise<import("@shared/schema").Order>;
+  updateOrderStatus(id: string, status: string, processedBy?: string): Promise<import("@shared/schema").Order | undefined>;
   getStockMovements(): Promise<StockMovement[]>;
   getStockMovementsByProduct(productId: string): Promise<StockMovement[]>;
   createStockMovement(movement: InsertStockMovement): Promise<StockMovement>;

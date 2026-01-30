@@ -25,6 +25,7 @@ import * as returnsImpl from "./impl/returns.impl";
 import * as promotionsImpl from "./impl/promotions.impl";
 import * as reportsImpl from "./impl/reports.impl";
 import * as paymentsImpl from "./impl/payments.impl";
+import * as ordersImpl from "./impl/orders.impl";
 import * as couponsImpl from "./impl/coupons.impl";
 import * as merchantImpl from "./impl/merchant.impl";
 import * as storesImpl from "./impl/stores.impl";
@@ -63,8 +64,8 @@ export class SupabaseStorage implements IStorage {
 
   // Categories
   getCategories = () => categoriesImpl.getCategories(this.client);
-  getCategoriesForStore = () =>
-    categoriesImpl.getCategoriesForStore(this.client);
+  getCategoriesForStore = (storeId?: string) =>
+    categoriesImpl.getCategoriesForStore(this.client, storeId);
   createCategory = (category: InsertCategory) =>
     categoriesImpl.createCategory(this.client, category);
   updateCategory = (id: string, category: Partial<InsertCategory>) =>
@@ -75,7 +76,7 @@ export class SupabaseStorage implements IStorage {
   // Products
   getProducts = (includeDeleted?: boolean) =>
     productsImpl.getProducts(this.client, includeDeleted);
-  getProductsForStore = () => productsImpl.getProductsForStore(this.client);
+  getProductsForStore = (storeId?: string) => productsImpl.getProductsForStore(this.client, storeId);
   getProduct = (id: string) => productsImpl.getProduct(this.client, id);
   getProductBySku = (sku: string) =>
     productsImpl.getProductBySku(this.client, sku);
@@ -158,6 +159,18 @@ export class SupabaseStorage implements IStorage {
     paymentsImpl.createPayment(this.client, payment);
   updatePayment = (id: string, data: any) =>
     paymentsImpl.updatePayment(this.client, id, data);
+
+  // Orders (online)
+  getOrders = (includeProcessed?: boolean) =>
+    ordersImpl.getOrders(this.client, includeProcessed ?? false);
+  getOrderById = (id: string) => ordersImpl.getOrderById(this.client, id);
+  getOrdersByStore = (storeId: string) =>
+    ordersImpl.getOrdersByStore(this.client, storeId);
+  getOrdersByCustomer = (customerId: string) =>
+    ordersImpl.getOrdersByCustomer(this.client, customerId);
+  createOrder = (order: any) => ordersImpl.createOrder(this.client, order);
+  updateOrderStatus = (id: string, status: string, processedBy?: string) =>
+    ordersImpl.updateOrderStatus(this.client, id, status, processedBy);
 
   // Coupons
   getDiscountCoupons = () => couponsImpl.getDiscountCoupons(this.client);

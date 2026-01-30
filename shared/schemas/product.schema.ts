@@ -11,6 +11,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { categories } from "./category.schema";
+import { stores } from "./store.schema";
 
 /** Product visibility: online = store only, offline = POS only, both = both. */
 export const PRODUCT_VISIBILITY = ["online", "offline", "both"] as const;
@@ -19,8 +20,10 @@ export const products = pgTable("products", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+  storeId: varchar("store_id").references(() => stores.id),
   name: text("name").notNull(),
-  sku: text("sku").notNull().unique(),
+  slug: text("slug"),
+  sku: text("sku").notNull(),
   categoryId: varchar("category_id").references(() => categories.id),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
@@ -38,7 +41,9 @@ export const products = pgTable("products", {
 });
 
 export const insertProductSchema = createInsertSchema(products).pick({
+  storeId: true,
   name: true,
+  slug: true,
   sku: true,
   categoryId: true,
   description: true,

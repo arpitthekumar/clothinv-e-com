@@ -17,19 +17,21 @@ export async function GET(request: NextRequest) {
   const source = url.searchParams.get("source"); // 'online' | 'pos' | omit = all
 
   if (auth.user.role === "customer") {
-    const sales = await storage.getSalesByCustomer(auth.user.id);
-    return NextResponse.json(source === "online" ? sales : sales);
+    const orders = await storage.getOrdersByCustomer(auth.user.id);
+    return NextResponse.json(orders);
   }
 
-  const includeDeleted = url.searchParams.get("includeDeleted") === "true";
-  const sales = await storage.getSales(includeDeleted);
-  const filtered =
-    source === "online"
-      ? sales.filter((s: { order_source?: string }) => s.order_source === "online")
-      : source === "pos"
-        ? sales.filter((s: { order_source?: string }) => s.order_source === "pos")
-        : sales;
-  return NextResponse.json(filtered);
+  // Admins: show orders for their store; Super Admin: show all orders (optionally include processed)
+  const includeProcessed = url.searchParams.get("includeProcessed") === "true";
+  if (auth.user.role === "admin") {
+    const storeId = auth.user.storeId;
+    const orders = await storage.getOrdersByStore(storeId);
+    return NextResponse.json(orders);
+  }
+
+  // super_admin
+  const orders = await storage.getOrders(includeProcessed);
+  return NextResponse.json(orders);
 }
 
 /**
@@ -48,23 +50,33 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const saleItems = Array.isArray(body.items)
+    const orderItems = Array.isArray(body.items)
       ? body.items
       : JSON.parse(body.items ?? "[]");
 
+    // Ensure items belong to the same store and derive storeId
+    let storeId: string | null = null;
+    for (const it of orderItems) {
+      const product = await storage.getProduct(it.productId);
+      if (!product) throw new Error(`Product ${it.productId} not found`);
+      const pidStore = (product as any).store_id || (product as any).storeId || null;
+      if (!storeId) storeId = pidStore;
+      if (storeId !== pidStore) throw new Error("All items must belong to the same store");
+    }
+    if (!storeId) throw new Error("Failed to determine store for order items");
+
     const totals = calculateSaleTotals(
-      saleItems,
+      orderItems,
       body.discount_type || null,
       parseFloat(body.discount_value || "0")
     );
 
-    const saleData = {
-      user_id: auth.user.id,
+    const orderData = {
+      store_id: storeId,
       customer_id: auth.user.id,
       customer_name: body.customer_name || auth.user.fullName || "Customer",
       customer_phone: body.customer_phone || "N/A",
-      items: saleItems,
-      invoice_number: body.invoice_number || `ORD-${Date.now()}`,
+      items: orderItems,
       subtotal: totals.subtotal.toFixed(2),
       tax_percent: totals.taxPercent.toFixed(2),
       tax_amount: totals.taxAmount.toFixed(2),
@@ -73,34 +85,34 @@ export async function POST(request: NextRequest) {
       discount_amount: totals.discountAmount.toFixed(2),
       total_amount: totals.total.toFixed(2),
       payment_method: body.payment_method || "online",
-      order_source: "online",
+      payment_provider: body.payment_provider || null,
+      payment_status: body.payment_status || "pending",
+      status: "created",
     };
 
-    const data = insertSaleSchema.parse(saleData);
-    const sale = await storage.createSale(data);
+    const data = insertSaleSchema.parse({
+      // for validation we re-use insertSaleSchema shape for numeric fields but will call createOrder
+      user_id: auth.user.id,
+      customer_id: auth.user.id,
+      customer_name: orderData.customer_name,
+      customer_phone: orderData.customer_phone,
+      items: orderData.items,
+      invoice_number: orderData.invoice_number || `ORD-${Date.now()}`,
+      subtotal: orderData.subtotal,
+      tax_percent: orderData.tax_percent,
+      tax_amount: orderData.tax_amount,
+      discount_type: orderData.discount_type,
+      discount_value: orderData.discount_value,
+      discount_amount: orderData.discount_amount,
+      total_amount: orderData.total_amount,
+      payment_method: orderData.payment_method,
+      order_source: "online",
+    });
 
-    const items = Array.isArray(data.items)
-      ? data.items
-      : JSON.parse(data.items as string);
+    // Create order record (not a sale yet)
+    const order = await storage.createOrder(orderData as any);
 
-    await storage.createSaleItems(sale.id, items);
-
-    for (const item of items) {
-      const product = await storage.getProduct(item.productId);
-      if (!product) continue;
-      await storage.updateStock(item.productId, product.stock - item.quantity);
-      await storage.createStockMovement({
-        productId: item.productId,
-        userId: auth.user.id,
-        type: "sale_out",
-        quantity: -item.quantity,
-        reason: `Online order ${sale.invoice_number}`,
-        refTable: "sale_items",
-        refId: sale.id,
-      } as import("@shared/schema").InsertStockMovement);
-    }
-
-    return NextResponse.json(sale, { status: 201 });
+    return NextResponse.json(order, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to create order";
     console.error("Order creation error:", error);

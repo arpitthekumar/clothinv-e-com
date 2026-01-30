@@ -16,13 +16,16 @@ export async function getProducts(
 }
 
 export async function getProductsForStore(
-  client: SupabaseServerClient
+  client: SupabaseServerClient,
+  storeId?: string
 ): Promise<Product[]> {
-  const { data, error } = await client
+  let q = client
     .from("products")
     .select("*")
     .eq("deleted", false)
     .or("visibility.eq.online,visibility.eq.both");
+  if (storeId) q = q.eq("store_id", storeId);
+  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as Product[];
 }

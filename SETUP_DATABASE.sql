@@ -29,25 +29,30 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ============================
--- 2. CATEGORIES TABLE
+-- 2. CATEGORIES TABLE (store-scoped)
 -- ============================
 CREATE TABLE IF NOT EXISTS categories (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-  name TEXT NOT NULL UNIQUE,
+  store_id VARCHAR(36) REFERENCES stores(id), -- NULL = platform-wide category
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
   description TEXT,
   color TEXT NOT NULL DEFAULT 'white',
   visibility TEXT NOT NULL DEFAULT 'offline', -- online | offline
   approval_status TEXT NOT NULL DEFAULT 'approved', -- pending | approved | rejected
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT categories_unique_per_store UNIQUE (store_id, slug)
 );
 
 -- ============================
--- 3. PRODUCTS TABLE
+-- 3. PRODUCTS TABLE (store-scoped)
 -- ============================
 CREATE TABLE IF NOT EXISTS products (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  store_id VARCHAR(36) REFERENCES stores(id), -- product belongs to a store
   name TEXT NOT NULL,
-  sku TEXT NOT NULL UNIQUE,
+  slug TEXT,
+  sku TEXT NOT NULL,
   category_id VARCHAR(36) REFERENCES categories(id), -- primary/legacy category
   description TEXT,
   price DECIMAL(10, 2) NOT NULL,
@@ -61,7 +66,8 @@ CREATE TABLE IF NOT EXISTS products (
   deleted BOOLEAN DEFAULT FALSE,
   deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT products_sku_store_unique UNIQUE (sku, store_id)
 );
 
 -- ============================
@@ -89,6 +95,7 @@ CREATE TABLE IF NOT EXISTS customers (
 -- ============================
 CREATE TABLE IF NOT EXISTS sales (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  store_id VARCHAR(36) REFERENCES stores(id), -- which store this sale belongs to (POS or derived from order)
   user_id VARCHAR(36) NOT NULL REFERENCES users(id),
   customer_id VARCHAR(36),
   customer_name TEXT NOT NULL,
@@ -102,11 +109,38 @@ CREATE TABLE IF NOT EXISTS sales (
   discount_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
   total_amount DECIMAL(10, 2) NOT NULL,
   payment_method TEXT NOT NULL DEFAULT 'cash',
-  invoice_number TEXT NOT NULL UNIQUE,
+  invoice_number TEXT NOT NULL,
   order_source TEXT NOT NULL DEFAULT 'pos', -- pos | online
   deleted BOOLEAN DEFAULT FALSE,
   deleted_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT sales_invoice_store_unique UNIQUE (invoice_number, store_id)
+);
+
+-- ============================
+-- ORDERS TABLE (Online e-commerce orders lifecycle)
+-- ============================
+CREATE TABLE IF NOT EXISTS orders (
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  store_id VARCHAR(36) REFERENCES stores(id) NOT NULL,
+  customer_id VARCHAR(36), -- user id if customer is logged in
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT NOT NULL,
+  items JSONB NOT NULL, -- Array of {productId, quantity, price}
+  subtotal DECIMAL(10, 2) NOT NULL,
+  tax_percent DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  tax_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  discount_type TEXT,
+  discount_value DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  discount_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  total_amount DECIMAL(10, 2) NOT NULL,
+  payment_method TEXT NOT NULL DEFAULT 'online',
+  payment_provider TEXT,
+  payment_status TEXT NOT NULL DEFAULT 'pending', -- pending | paid | failed | refunded
+  status TEXT NOT NULL DEFAULT 'created', -- created | packed | shipped | delivered | cancelled
+  processed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================
@@ -249,9 +283,11 @@ CREATE TABLE IF NOT EXISTS discount_coupons (
 -- ============================
 CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-  sale_id VARCHAR(36) NOT NULL REFERENCES sales(id),
+  sale_id VARCHAR(36) REFERENCES sales(id),
+  order_id VARCHAR(36) REFERENCES orders(id), -- payments can be for orders (online) or sales (POS)
+  store_id VARCHAR(36) REFERENCES stores(id),
   provider TEXT NOT NULL, -- 'razorpay'
-  order_id TEXT,
+  order_provider_id TEXT,
   payment_id TEXT,
   status TEXT NOT NULL DEFAULT 'created', -- created | authorized | captured | failed | refunded
   amount DECIMAL(10, 2) NOT NULL,
@@ -272,13 +308,26 @@ CREATE INDEX idx_users_store_id ON users(store_id);
 
 -- Categories
 CREATE INDEX idx_categories_name ON categories(name);
+CREATE INDEX idx_categories_store_id ON categories(store_id);
+CREATE INDEX idx_categories_slug ON categories(slug);
 
 -- Products
 CREATE INDEX idx_products_sku ON products(sku);
+CREATE INDEX idx_products_sku_store ON products(sku, store_id);
+CREATE INDEX idx_products_store_id ON products(store_id);
+CREATE INDEX idx_products_slug ON products(slug);
 CREATE INDEX idx_products_barcode ON products(barcode);
 CREATE INDEX idx_products_category_id ON products(category_id);
 CREATE INDEX idx_products_deleted ON products(deleted);
 
+-- Sales & Orders
+CREATE INDEX idx_sales_store_id ON sales(store_id);
+CREATE INDEX idx_orders_store_id ON orders(store_id);
+CREATE INDEX idx_orders_status ON orders(status);
+
+-- Payments
+CREATE INDEX idx_payments_order_id ON payments(order_id);
+CREATE INDEX idx_payments_store_id ON payments(store_id);
 -- Product categories (many-to-many)
 CREATE INDEX idx_product_categories_product_id ON product_categories(product_id);
 CREATE INDEX idx_product_categories_category_id ON product_categories(category_id);
@@ -323,10 +372,13 @@ CREATE INDEX idx_payments_sale_id ON payments(sale_id);
 CREATE INDEX idx_payments_status ON payments(status);
 
 -- ===========================================================================
--- ROW LEVEL SECURITY (Optional but recommended for Supabase)
+-- ROW LEVEL SECURITY (RECOMMENDED FOR SUPABASE)
 -- ===========================================================================
--- Enable RLS on all tables (uncomment if needed)
-/*
+-- Enable RLS and create policies to enforce per-store ownership and access.
+-- Public (unauthenticated) users may SELECT records marked for public viewing
+-- (e.g., `products.visibility = 'online'`). Only store staff (admin/employee)
+-- for a store or `super_admin` can create/update/delete resources for that store.
+
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
@@ -346,8 +398,160 @@ ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE promotion_targets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE discount_coupons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-*/
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
+-- Note: policies rely on `users.id = auth.uid()` mapping. Ensure your app sets
+-- users.id to the Supabase auth uid at registration or account linking.
+
+-- ==================== Products ====================
+CREATE POLICY "public_select_online_products" ON products
+  FOR SELECT USING (visibility = 'online');
+
+CREATE POLICY "select_products_store_staff_or_super" ON products
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR u.store_id = products.store_id))
+  );
+
+CREATE POLICY "insert_products_store_admin_or_super" ON products
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.role = 'admin' AND u.store_id = products.store_id)))
+  );
+
+CREATE POLICY "update_products_store_staff_or_super" ON products
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR u.store_id = products.store_id))
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR u.store_id = products.store_id))
+  );
+
+CREATE POLICY "delete_products_store_admin_or_super" ON products
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.role = 'admin' AND u.store_id = products.store_id)))
+  );
+
+-- ==================== Categories ====================
+CREATE POLICY "public_select_online_categories" ON categories
+  FOR SELECT USING (visibility = 'online');
+
+CREATE POLICY "select_categories_store_staff_or_super" ON categories
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR u.store_id = categories.store_id))
+  );
+
+CREATE POLICY "insert_categories_store_admin_or_super" ON categories
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (
+      u.role = 'super_admin' OR (u.role = 'admin' AND u.store_id = categories.store_id)
+    ))
+  );
+
+CREATE POLICY "update_categories_store_admin_or_super" ON categories
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (
+      u.role = 'super_admin' OR (u.store_id = categories.store_id AND u.role = 'admin')
+    ))
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (
+      u.role = 'super_admin' OR (u.store_id = categories.store_id AND u.role = 'admin')
+    ))
+  );
+
+CREATE POLICY "delete_categories_store_admin_or_super" ON categories
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (
+      u.role = 'super_admin' OR (u.store_id = categories.store_id AND u.role = 'admin')
+    ))
+  );
+
+-- ==================== Orders ====================
+CREATE POLICY "insert_orders_customers_or_staff" ON orders
+  FOR INSERT WITH CHECK (
+    auth.uid() IS NOT NULL AND (
+      (EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'customer' AND orders.customer_id = auth.uid())) OR
+      (EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role IN ('admin','employee') AND u.store_id = orders.store_id))) OR
+      (EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'super_admin'))
+    )
+  );
+
+CREATE POLICY "select_orders_customer_store_staff_or_super" ON orders
+  FOR SELECT USING (
+    auth.uid() IS NOT NULL AND (
+      orders.customer_id = auth.uid() OR
+      EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR u.store_id = orders.store_id))
+    )
+  );
+
+CREATE POLICY "update_orders_status_store_staff_or_super" ON orders
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND u.role IN ('admin','employee'))))
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND u.role IN ('admin','employee'))))
+  );
+
+CREATE POLICY "customers_update_self_orders_only" ON orders
+  FOR UPDATE USING (
+    auth.uid() IS NOT NULL AND orders.customer_id = auth.uid() AND EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'customer')
+  ) WITH CHECK (FALSE);
+
+CREATE POLICY "delete_orders_store_admin_or_super" ON orders
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.role = 'admin' AND u.store_id = orders.store_id)))
+  );
+
+-- ==================== Sales (POS) ====================
+CREATE POLICY "insert_sales_store_staff_or_super" ON sales
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.role IN ('admin','employee') AND u.store_id = sales.store_id)))
+  );
+
+CREATE POLICY "select_sales_customer_store_staff_or_super" ON sales
+  FOR SELECT USING (
+    auth.uid() IS NOT NULL AND (
+      sales.customer_id = auth.uid() OR
+      EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR u.store_id = sales.store_id))
+    )
+  );
+
+CREATE POLICY "modify_sales_store_admin_or_super" ON sales
+  FOR UPDATE, DELETE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.role = 'admin' AND u.store_id = sales.store_id)))
+  );
+
+-- ==================== Payments ====================
+CREATE POLICY "payments_insert_store_staff_or_super" ON payments
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR (u.role IN ('admin','employee') AND u.store_id = payments.store_id)))
+  );
+
+CREATE POLICY "payments_select_store_staff_or_super_or_owner" ON payments
+  FOR SELECT USING (
+    auth.uid() IS NOT NULL AND (
+      EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND (u.role = 'super_admin' OR u.store_id = payments.store_id))
+    )
+  );
+
+-- ===========================================================================
+-- MIGRATION NOTES
+-- ===========================================================================
+-- 1) This update introduces `store_id` and `slug` for categories/products and a
+--    new `orders` table for the online order lifecycle. These fields ensure
+--    clear separation of data between stores and avoid collisions (e.g., SKU)
+--    across different stores.
+--
+-- 2) For existing deployments: backfill `store_id` and `slug` values. Example
+--    strategy:
+--      - If single-store deployment: set store_id to the only store's id for
+--        existing products/categories.
+--      - Generate `slug` from name (slugify) and ensure uniqueness per store.
+--      - Add an admin script to reconcile ambiguous mappings.
+--
+-- 3) Indexes and constraints were added for `store_id`, `slug`, and composite
+--    uniqueness of (sku, store_id) and (invoice_number, store_id) for safer
+--    multi-store behaviour.
+--
+-- 4) Consider enabling Row Level Security and adding policies that enforce
+--    `store_id` filtering on authenticated requests (recommended for Supabase).
+--
 -- ===========================================================================
 -- DONE! All tables are ready to use.
 -- ===========================================================================
