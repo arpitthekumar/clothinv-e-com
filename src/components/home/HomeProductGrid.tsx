@@ -115,7 +115,7 @@ export function HomeProductGrid() {
                       </Link>
                     ))}
                   </div>
-                  <Link href={`/store?category=${cat.id}`} className="inline-block mt-2">
+                  <Link href={`/store/category/${(cat as any).slug ?? cat.id}`} className="inline-block mt-2">
                     <Button variant="ghost" size="sm">View all in {cat.name}</Button>
                   </Link>
                 </div>

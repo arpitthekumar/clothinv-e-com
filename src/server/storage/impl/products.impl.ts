@@ -17,7 +17,8 @@ export async function getProducts(
 
 export async function getProductsForStore(
   client: SupabaseServerClient,
-  storeId?: string
+  storeId?: string,
+  filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string }
 ): Promise<Product[]> {
   let q = client
     .from("products")
@@ -25,6 +26,27 @@ export async function getProductsForStore(
     .eq("deleted", false)
     .or("visibility.eq.online,visibility.eq.both");
   if (storeId) q = q.eq("store_id", storeId);
+
+  if (filters?.categorySlug) {
+    // Resolve category slug to category id, considering store scope (storeId may be undefined for platform categories)
+    const { data: cats, error: cErr } = await client
+      .from("categories")
+      .select("*")
+      .eq("slug", filters.categorySlug)
+      .limit(1);
+    if (cErr) throw cErr;
+    const cat = (cats ?? [])[0];
+    if (cat) {
+      q = q.eq("category_id", cat.id);
+    } else {
+      // no matching category -> return empty
+      return [] as Product[];
+    }
+  }
+
+  if (filters?.minPrice) q = q.gte("price", filters.minPrice);
+  if (filters?.maxPrice) q = q.lte("price", filters.maxPrice);
+
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as Product[];

@@ -7,6 +7,8 @@ import { StoreCartDrawer } from "./store-cart-drawer";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { Navbar } from "@/components/ui/Navbar";
+import { Input } from "@/components/ui/input";
 
 function getQueryFn(url: string) {
   return async () => {
@@ -37,56 +39,33 @@ export default function StorePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center justify-between px-4">
-          <Link href="/store" className="font-semibold">
-            Store
-          </Link>
-          <div className="flex items-center gap-2">
-            {user ? (
-              <>
-                <Link href="/store/orders">
-                  <Button variant="ghost" size="sm">My orders</Button>
-                </Link>
-                {user.role !== "admin" && user.role !== "super_admin" && (
-                  <Link href="/store/become-merchant">
-                    <Button variant="outline" size="sm">Become a seller</Button>
-                  </Link>
-                )}
-                <StoreCartDrawer />
-              </>
-            ) : (
-              <>
-                <Link href="/auth">
-                  <Button variant="ghost" size="sm">Login</Button>
-                </Link>
-                <StoreCartDrawer />
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="container px-4 py-6">
         {categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            <Button
-              variant={categoryFilter === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCategoryFilter(null)}
-            >
-              All
-            </Button>
-            {categories.map((c: { id: string; name: string }) => (
-              <Button
-                key={c.id}
-                variant={categoryFilter === c.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCategoryFilter(c.id)}
-              >
-                {c.name}
+          <div className="flex flex-wrap gap-2 mb-6 items-center">
+            <Link href="/store">
+              <Button variant={categoryFilter === null ? "default" : "outline"} size="sm" onClick={() => setCategoryFilter(null)}>
+                All
               </Button>
+            </Link>
+            {categories.map((c: { id: string; name: string; slug?: string }) => (
+              <Link key={c.id} href={`/store/category/${c.slug ?? c.id}`}>
+                <Button
+                  variant={categoryFilter === c.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCategoryFilter(c.id)}
+                >
+                  {c.name}
+                </Button>
+              </Link>
             ))}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Input placeholder="Min price" className="w-28" onChange={(e) => {/* no-op; filtering supported in category page */}} />
+              <Input placeholder="Max price" className="w-28" onChange={(e) => {/* no-op; filtering supported in category page */}} />
+              <Button variant="outline" size="sm">Filter</Button>
+            </div>
           </div>
         )}
 

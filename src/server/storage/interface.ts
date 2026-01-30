@@ -36,8 +36,10 @@ export interface IStorage {
   getProductBySku(sku: string): Promise<Product | undefined>;
   getProductByBarcode(barcode: string): Promise<Product | undefined>;
   getProducts(includeDeleted?: boolean): Promise<Product[]>;
-  /** Products visible on e-commerce store (visibility online or both, not deleted) */
-  getProductsForStore(storeId?: string): Promise<Product[]>;
+  /** Products visible on e-commerce store (visibility online or both, not deleted).
+   * Optional filters: categorySlug, minPrice, maxPrice (all strings because they come from query params).
+   */
+  getProductsForStore(storeId?: string, filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string }): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(
     id: string,

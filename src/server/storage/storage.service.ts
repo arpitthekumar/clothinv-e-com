@@ -76,7 +76,7 @@ export class SupabaseStorage implements IStorage {
   // Products
   getProducts = (includeDeleted?: boolean) =>
     productsImpl.getProducts(this.client, includeDeleted);
-  getProductsForStore = (storeId?: string) => productsImpl.getProductsForStore(this.client, storeId);
+  getProductsForStore = (storeId?: string, filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string }) => productsImpl.getProductsForStore(this.client, storeId, filters);
   getProduct = (id: string) => productsImpl.getProduct(this.client, id);
   getProductBySku = (sku: string) =>
     productsImpl.getProductBySku(this.client, sku);

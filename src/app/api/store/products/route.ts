@@ -7,7 +7,10 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const storeId = url.searchParams.get("storeId") || undefined;
-    const products = await storage.getProductsForStore(storeId);
+  const categorySlug = url.searchParams.get("categorySlug") || undefined;
+  const minPrice = url.searchParams.get("minPrice") || undefined;
+  const maxPrice = url.searchParams.get("maxPrice") || undefined;
+  const products = await storage.getProductsForStore(storeId, { categorySlug, minPrice, maxPrice });
     const mapped = (products ?? []).map(mapProductFromDb);
     return NextResponse.json(mapped);
   } catch (error: unknown) {

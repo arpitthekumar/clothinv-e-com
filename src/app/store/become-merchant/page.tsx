@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { Navbar } from "@/components/ui/Navbar";
 
 export default function BecomeMerchantPage() {
   const router = useRouter();
@@ -68,16 +69,7 @@ export default function BecomeMerchantPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container flex h-14 items-center justify-between px-4">
-          <Link href="/store" className="font-semibold">
-            Store
-          </Link>
-          <Link href="/store">
-            <Button variant="ghost" size="sm">Back to shop</Button>
-          </Link>
-        </div>
-      </header>
+      <Navbar />
       <main className="container max-w-lg mx-auto px-4 py-8">
         <Card>
           <CardHeader>

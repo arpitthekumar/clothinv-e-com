@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Navbar } from "@/components/ui/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,21 +44,7 @@ export default function StoreOrdersPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container flex h-14 items-center justify-between px-4">
-          <Link href="/store" className="font-semibold">
-            Store
-          </Link>
-          <div className="flex gap-2">
-            <Link href="/store/orders">
-              <Button variant="ghost" size="sm">My orders</Button>
-            </Link>
-            <Link href="/store">
-              <Button variant="outline" size="sm">Continue shopping</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Navbar />
       <main className="container max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-xl font-semibold mb-6">My orders</h1>
         {ordersLoading ? (
