@@ -72,6 +72,7 @@ export interface IStorage {
   getOrdersByStore(storeId: string): Promise<import("@shared/schema").Order[]>;
   getOrdersByCustomer(customerId: string): Promise<import("@shared/schema").Order[]>;
   createOrder(order: import("@shared/schema").InsertOrder): Promise<import("@shared/schema").Order>;
+  updateOrder(id: string, patch: Partial<import("@shared/schema").InsertOrder>): Promise<import("@shared/schema").Order | undefined>;
   updateOrderStatus(id: string, status: string, processedBy?: string): Promise<import("@shared/schema").Order | undefined>;
   getStockMovements(): Promise<StockMovement[]>;
   getStockMovementsByProduct(productId: string): Promise<StockMovement[]>;

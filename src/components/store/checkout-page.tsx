@@ -51,6 +51,75 @@ export function CheckoutPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Order failed");
       }
+
+      const created = await res.json();
+      const orderId = created.id;
+
+      // Create server-side Razorpay order
+      const r = await fetch("/api/payments/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create payment order");
+      }
+      const { razorpayOrder, keyId } = await r.json();
+
+      // Load Razorpay checkout script if needed
+      if (typeof window !== "undefined" && !(window as any).Razorpay) {
+        await new Promise<void>((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://checkout.razorpay.com/v1/checkout.js";
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error("Failed to load razorpay script"));
+          document.head.appendChild(s);
+        });
+      }
+
+      // Open Razorpay inline checkout
+      await new Promise<void>((resolve, reject) => {
+        const options: any = {
+          key: keyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: "ClothInv Store",
+          description: `Order ${created.invoice_number || created.id}`,
+          order_id: razorpayOrder.id,
+          handler: async function (response: any) {
+            try {
+              // Verify payment server-side
+              const vr = await fetch("/api/payments/razorpay/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderId,
+                }),
+              });
+              if (!vr.ok) {
+                const err = await vr.json().catch(() => ({}));
+                reject(new Error(err.error || "Payment verification failed"));
+                return;
+              }
+
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          },
+          prefill: {
+            name: window?.localStorage?.getItem("user_name") || undefined,
+          },
+          theme: { color: "#2563eb" },
+        };
+        const rp = new (window as any).Razorpay(options);
+        rp.open();
+      });
+
       clearCart();
       router.push("/store/checkout/success");
     } catch (e) {

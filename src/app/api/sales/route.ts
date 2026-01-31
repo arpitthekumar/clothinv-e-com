@@ -69,6 +69,21 @@ export async function POST(request: NextRequest) {
     // If admin (merchant) is creating a POS sale, attach their store id so sales are store-scoped
     if (auth.user.storeId) {
       saleData.storeId = auth.user.storeId;
+    } else {
+      // Attempt to derive store id from items (useful if session missing storeId)
+      let inferredStore: string | null = null;
+      for (const it of Array.isArray(saleData.items) ? saleData.items : JSON.parse(saleData.items)) {
+        const product = await storage.getProduct(it.productId);
+        if (!product) continue;
+        const pidStore = (product as any).storeId || (product as any).store_id || null;
+        if (!inferredStore) inferredStore = pidStore;
+        if (inferredStore !== pidStore) {
+          // mixed-store sale: do not attach a store
+          inferredStore = null;
+          break;
+        }
+      }
+      if (inferredStore) saleData.storeId = inferredStore as any;
     }
 
     // Validate schema

@@ -65,6 +65,21 @@ export async function createOrder(
   return data as Order;
 }
 
+export async function updateOrder(
+  client: SupabaseServerClient,
+  id: string,
+  patch: Partial<InsertOrder>
+): Promise<Order | undefined> {
+  const { data, error } = await client
+    .from("orders")
+    .update(patch as any)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? undefined) as Order | undefined;
+}
+
 /**
  * Update order status. If new status is 'delivered', process the order into a sale
  * (create sale, sale_items, decrement stock, create stock movements). Idempotent

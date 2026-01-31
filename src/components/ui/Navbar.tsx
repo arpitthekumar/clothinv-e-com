@@ -30,20 +30,12 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 gap-1 md:gap-7">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <span className="text-xl">ShopFlow</span>
         </Link>
 
         <div className="flex items-center gap-2">
-          <button
-            aria-label="Categories"
-            className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded hover:bg-muted"
-            onClick={() => setOpen((v) => !v)}
-          >
-            <Menu className="h-4 w-4" />
-            <span className="text-sm">Categories</span>
-          </button>
           {open && categories.length > 0 && (
             <div className="absolute mt-12 bg-background border rounded shadow w-64 p-3">
               <ul className="space-y-1">

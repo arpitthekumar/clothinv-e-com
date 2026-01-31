@@ -77,7 +77,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   ];
 
   const adminMenuItems = [
-    { href: "/", icon: BarChart3, label: "Dashboard" },
+    { href: "/admin", icon: BarChart3, label: "Dashboard" },
     { href: "/admin/users", icon: Users, label: "Users" },
     { href: "/admin/inventory", icon: Package, label: "Inventory" },
     { href: "/admin/sales", icon: Receipt, label: "Sales Management" },

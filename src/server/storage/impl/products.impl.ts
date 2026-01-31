@@ -91,14 +91,46 @@ export async function getProductByBarcode(
   return (data ?? undefined) as Product | undefined;
 }
 
+export function slugify(input: string) {
+  return input
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+async function uniqueSlugForStore(client: SupabaseServerClient, base: string, storeId?: string | null) {
+  let attempt = base;
+  let suffix = 1;
+  while (true) {
+    const q = client.from("products").select("id").eq("slug", attempt);
+    if (storeId) (q as any).eq("store_id", storeId);
+    const { data, error } = await q.limit(1);
+    if (error) throw error;
+    if (!data || (data as any).length === 0) return attempt;
+    attempt = `${base}-${suffix++}`;
+  }
+}
+
 export async function createProduct(
   client: SupabaseServerClient,
   product: InsertProduct
 ): Promise<Product> {
-  const payload = {
+  const payload: any = {
     ...product,
     visibility: (product as any).visibility ?? "offline",
+    store_id: (product as any).storeId ?? null,
   };
+
+  // Ensure a slug exists and is unique per store
+  if (!payload.slug || String(payload.slug).trim() === "") {
+    const base = slugify(product.name || crypto.randomUUID());
+    payload.slug = await uniqueSlugForStore(client, base, payload.store_id);
+  }
+
   const { data, error } = await client
     .from("products")
     .insert(payload)
@@ -113,9 +145,18 @@ export async function updateProduct(
   id: string,
   product: Partial<InsertProduct>
 ): Promise<Product | undefined> {
+  const payload: any = { ...product };
+  if ((product as any).storeId !== undefined) payload.store_id = (product as any).storeId;
+
+  // If slug is missing or empty, try to generate one using product name
+  if ((!payload.slug || String(payload.slug).trim() === "") && product.name) {
+    const base = slugify(product.name);
+    payload.slug = await uniqueSlugForStore(client, base, payload.store_id ?? null);
+  }
+
   const { data, error } = await client
     .from("products")
-    .update(product)
+    .update(payload)
     .eq("id", id)
     .select("*")
     .maybeSingle();

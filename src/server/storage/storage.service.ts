@@ -179,6 +179,7 @@ export class SupabaseStorage implements IStorage {
   getOrdersByCustomer = (customerId: string) =>
     ordersImpl.getOrdersByCustomer(this.client, customerId);
   createOrder = (order: any) => ordersImpl.createOrder(this.client, order);
+  updateOrder = (id: string, patch: any) => ordersImpl.updateOrder(this.client, id, patch);
   updateOrderStatus = (id: string, status: string, processedBy?: string) =>
     ordersImpl.updateOrderStatus(this.client, id, status, processedBy);
 

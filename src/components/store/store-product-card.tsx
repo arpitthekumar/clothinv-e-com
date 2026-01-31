@@ -12,6 +12,7 @@ type Product = {
   stock: number;
   description?: string | null;
   image?: string | null;
+  slug?: string | null;
 };
 
 export function StoreProductCard({ product }: { product: Product }) {
@@ -22,20 +23,22 @@ export function StoreProductCard({ product }: { product: Product }) {
     <Card className="flex flex-col overflow-hidden">
       <div className="aspect-square bg-muted relative overflow-hidden">
         {product.image ? (
-          <img
-            src={(() => {
-              try {
-                // lazy import helper to ensure env var usage
-                // eslint-disable-next-line @typescript-eslint/no-var-requires
-                const { getPublicImageUrl } = require("@/lib/media");
-                return getPublicImageUrl(product.image) || product.image;
-              } catch (e) {
-                return product.image;
-              }
-            })()}
-            alt={product.name}
-            className="object-cover w-full h-full"
-          />
+          <a href={`/store/product/${product.slug ?? product.id}`} aria-label={`View ${product.name}`}>
+            <img
+              src={(() => {
+                try {
+                  // lazy import helper to ensure env var usage
+                  // eslint-disable-next-line @typescript-eslint/no-var-requires
+                  const { getPublicImageUrl } = require("@/lib/media");
+                  return getPublicImageUrl(product.image) || product.image;
+                } catch (e) {
+                  return product.image;
+                }
+              })()}
+              alt={product.name}
+              className="object-cover w-full h-full"
+            />
+          </a>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
             No image
@@ -43,7 +46,7 @@ export function StoreProductCard({ product }: { product: Product }) {
         )}
       </div>
       <CardContent className="pt-4 flex-1">
-        <h3 className="font-semibold truncate">{product.name}</h3>
+        <h3 className="font-semibold truncate"><a href={`/store/product/${product.slug ?? product.id}`}>{product.name}</a></h3>
         <p className="text-xs text-muted-foreground mt-0.5">{product.sku}</p>
         {product.description && (
           <p className="text-sm text-muted-foreground mt-2 line-clamp-2">

@@ -48,7 +48,7 @@ export default function AuthPage() {
     }
 
     if (user.role === "super_admin" || user.role === "admin") {
-      router.replace("/admin/orders");
+      router.replace("/superadmin");
       return;
     }
 
