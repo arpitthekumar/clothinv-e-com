@@ -6,12 +6,9 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col justify-between">
       <Navbar />
-      <main className="container flex-1 px-4 py-12 max-w-3xl">
-        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground mb-6 inline-block">
-          ← Back to home
-        </Link>
+      <main className="mx-auto w-full max-w-7xl px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
         <p className="text-muted-foreground mb-4">Last updated: {new Date().toLocaleDateString()}</p>
         <div className="prose prose-sm dark:prose-invert max-w-none space-y-4">

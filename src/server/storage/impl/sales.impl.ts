@@ -149,7 +149,7 @@ export async function createSale(
   client: SupabaseServerClient,
   sale: InsertSale
 ): Promise<Sale> {
-  const payload = {
+  const payload: any = {
     user_id: sale.user_id,
     customer_id: (sale as any).customer_id ?? null,
     customer_name: sale.customer_name?.trim() || "Walk-in Customer",
@@ -166,6 +166,10 @@ export async function createSale(
     payment_method: sale.payment_method || "cash",
     order_source: (sale as any).order_source || "pos",
   };
+
+  if ((sale as any).storeId) {
+    payload.store_id = (sale as any).storeId;
+  }
   const { data, error } = await client
     .from("sales")
     .insert(payload)

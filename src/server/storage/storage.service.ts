@@ -63,6 +63,7 @@ export class SupabaseStorage implements IStorage {
   getStoreByOwnerId = (ownerId: string) =>
     storesImpl.getStoreByOwnerId(this.client, ownerId);
   getStores = () => storesImpl.getStores(this.client);
+  getStoreById = (id: string) => storesImpl.getStoreById(this.client, id);
 
   // Categories
   getCategories = () => categoriesImpl.getCategories(this.client);
@@ -88,6 +89,13 @@ export class SupabaseStorage implements IStorage {
     productsImpl.createProduct(this.client, product);
   updateProduct = (id: string, product: Partial<InsertProduct>) =>
     productsImpl.updateProduct(this.client, id, product);
+
+  // Image uploads (compress + store short path)
+  uploadImage = (base64: string, storeId?: string | null) =>
+    (async () => {
+      const { uploadBase64Image } = await import("./impl/images.impl");
+      return uploadBase64Image(this.client, base64, storeId);
+    })();
   deleteProduct = (id: string) =>
     productsImpl.deleteProduct(this.client, id);
   softDeleteProduct = (id: string) =>

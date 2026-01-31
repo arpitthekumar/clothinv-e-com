@@ -44,3 +44,12 @@ export async function getStores(
   if (error) throw error;
   return (data ?? []) as Array<{ id: string; name: string }>;
 }
+
+export async function getStoreById(
+  client: SupabaseServerClient,
+  id: string
+): Promise<{ id: string; name: string } | undefined> {
+  const { data, error } = await client.from("stores").select("id, name").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data ?? undefined) as { id: string; name: string } | undefined;
+}

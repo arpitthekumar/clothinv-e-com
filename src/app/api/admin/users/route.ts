@@ -13,7 +13,19 @@ export async function GET() {
       : auth.user.storeId
         ? await storage.getUsersByStore(auth.user.storeId)
         : [];
-  return NextResponse.json(users);
+
+  // Enrich with store names for display and ensure createdAt is present
+  const stores = await storage.getStores();
+  const storeMap: Record<string, string> = {};
+  for (const s of stores) storeMap[s.id] = s.name;
+  const enriched = (users as any[]).map((u) => ({
+    ...u,
+    storeName: u.storeId ? storeMap[u.storeId] ?? u.storeId : null,
+    // createdAt mapping should already exist from storage; keep it safe
+    createdAt: u.createdAt ?? u.created_at ?? null,
+  }));
+
+  return NextResponse.json(enriched);
 }
 
 export async function POST(req: NextRequest) {

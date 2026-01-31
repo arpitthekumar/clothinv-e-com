@@ -157,6 +157,13 @@ export async function updateOrderStatus(
         refId: sale.id,
       } as any);
     }
+
+    // Remove the order after it's been processed into a sale so delivered orders do not linger
+    const { error: delErr } = await client.from("orders").delete().eq("id", id);
+    if (delErr) throw delErr;
+
+    // Return an object indicating moved-to-sale so callers can react accordingly
+    return { ...(updatedOrder as any), movedToSaleId: sale.id } as any;
   }
 
   return updatedOrder as Order;

@@ -26,10 +26,12 @@ export default function StoreOrdersPage() {
     enabled: !!user,
   });
 
-  if (!isLoading && !user) {
-    router.replace("/auth?returnUrl=" + encodeURIComponent("/store/orders"));
-    return null;
-  }
+  // Avoid calling router.replace during render — do it in an effect.
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/auth?returnUrl=" + encodeURIComponent("/store/orders"));
+    }
+  }, [isLoading, user, router]);
 
   if (isLoading || !user) {
     return (

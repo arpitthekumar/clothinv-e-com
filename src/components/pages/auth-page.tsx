@@ -35,18 +35,28 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (returnUrl && returnUrl.startsWith("/store")) {
-      router.replace(returnUrl);
-      return;
+    // Honor returnUrl when appropriate for role: store routes for customers, admin routes for admins
+    if (returnUrl) {
+      if (returnUrl.startsWith("/store") && user.role === "customer") {
+        router.replace(returnUrl);
+        return;
+      }
+      if (returnUrl.startsWith("/admin") && (user.role === "admin" || user.role === "super_admin")) {
+        router.replace(returnUrl);
+        return;
+      }
     }
+
     if (user.role === "super_admin" || user.role === "admin") {
-      router.replace("/");
+      router.replace("/admin/orders");
       return;
     }
+
     if (user.role === "customer") {
       router.replace("/store");
       return;
     }
+
     router.replace("/pos");
   }, [user, returnUrl, router]);
 

@@ -67,8 +67,20 @@ export async function POST(req: NextRequest) {
 
   // Save session
   const session = await getSession();
-  session.user = user;
+
+  // Enrich user with store name (helps admin UI)
+  let enrichedUser = { ...user } as any;
+  if (user.storeId) {
+    try {
+      const store = await storage.getStoreById(user.storeId);
+      if (store) enrichedUser.storeName = store.name;
+    } catch (err) {
+      // non-fatal
+    }
+  }
+
+  session.user = enrichedUser;
   await session.save();
 
-  return NextResponse.json(user, { status: 200 });
+  return NextResponse.json(enrichedUser, { status: 200 });
 }

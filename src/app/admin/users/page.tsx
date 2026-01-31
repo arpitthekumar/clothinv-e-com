@@ -297,7 +297,7 @@ export default function AdminUsersPage() {
                           </Badge>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {u.storeId ? storeNameMap[u.storeId] ?? u.storeId : "-"}
+                          {u.storeName ?? (u.storeId ? storeNameMap[u.storeId] ?? u.storeId : "-")}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {u.createdAt

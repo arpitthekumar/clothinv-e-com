@@ -16,6 +16,11 @@ function mapFromDb(row: any): any {
     out.authUid = row.auth_uid;
     delete out.auth_uid;
   }
+  // map created_at -> createdAt for UI display
+  if (row.created_at !== undefined) {
+    out.createdAt = row.created_at;
+    delete out.created_at;
+  }
   return out;
 }
 

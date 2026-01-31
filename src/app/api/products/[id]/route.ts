@@ -65,7 +65,19 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     if (body.categoryId === "") body.categoryId = null;
     
     const data = insertProductSchema.partial().parse(body);
-    
+
+    // If image is a base64 payload, compress & upload to storage and replace with short path
+    if (data.image && typeof data.image === "string" && data.image.startsWith("data:")) {
+      try {
+        const path = await storage.uploadImage(data.image, auth.user.storeId ?? null);
+        (data as any).image = path;
+      } catch (err: any) {
+        console.error("Image upload failed:", err);
+        const details = err?.message ?? JSON.stringify(err);
+        return NextResponse.json({ error: "Failed to upload image", details }, { status: 400 });
+      }
+    }
+
     // Map all fields to database column names (snake_case for Supabase)
     const dbData = mapProductToDb({
       ...data,

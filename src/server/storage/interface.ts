@@ -21,6 +21,7 @@ export interface IStorage {
   /** Users belonging to a store (admin sees only their store's users). */
   getUsersByStore(storeId: string): Promise<User[]>;
   getStores(): Promise<Array<{ id: string; name: string }>>;
+  getStoreById(id: string): Promise<{ id: string; name: string } | undefined>;
 
   getCategories(): Promise<Category[]>;
   /** Categories visible on store (visibility=online, approval_status=approved) */
@@ -173,6 +174,12 @@ export interface IStorage {
     coupon: Partial<import("@shared/schema").InsertDiscountCoupon>
   ): Promise<import("@shared/schema").DiscountCoupon | undefined>;
   deleteDiscountCoupon(id: string): Promise<boolean>;
+
+  /**
+   * Upload a base64 image (server-side): compress, store in `product-images` and return short object path.
+   * Returns the path which should be stored in DB (keeps DB rows small vs storing raw base64).
+   */
+  uploadImage(base64: string, storeId?: string | null): Promise<string>;
 
   // Merchant requests (Super Admin governance)
   getMerchantRequests(status?: "pending" | "approved" | "rejected"): Promise<import("@shared/schema").MerchantRequest[]>;

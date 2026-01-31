@@ -11,13 +11,21 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const includeDeleted = url.searchParams.get("includeDeleted") === "true";
 
-  // Customer: online order history. Admin/Super Admin: all sales. Employee: own POS sales.
-  const sales =
-    auth.user.role === "customer"
-      ? await storage.getSalesByCustomer(auth.user.id)
-      : auth.user.role === "admin" || auth.user.role === "super_admin"
-        ? await storage.getSales(includeDeleted)
-        : await storage.getSalesByUser(auth.user.id, includeDeleted);
+  // Customer: online order history. Admin/Super Admin: all sales (admin scope limited to their store).
+  let sales;
+  if (auth.user.role === "customer") {
+    sales = await storage.getSalesByCustomer(auth.user.id);
+  } else if (auth.user.role === "admin") {
+    if (!auth.user.storeId) {
+      return NextResponse.json({ error: "Admin account is missing store assignment (storeId)." }, { status: 400 });
+    }
+    const all = await storage.getSales(includeDeleted);
+    sales = (all || []).filter((s: any) => (s.storeId === auth.user.storeId || (s as any).store_id === auth.user.storeId));
+  } else if (auth.user.role === "super_admin") {
+    sales = await storage.getSales(includeDeleted);
+  } else {
+    sales = await storage.getSalesByUser(auth.user.id, includeDeleted);
+  }
 
   return NextResponse.json(sales);
 }
@@ -40,7 +48,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Prepare sale data (POS: order_source = 'pos'; online checkout uses 'online')
-    const saleData = {
+    const saleData: any = {
       user_id: auth.user.id,
       customer_id: body.customer_id ?? undefined,
       customer_name: body.customer_name || "Walk-in Customer",
@@ -57,6 +65,11 @@ export async function POST(request: NextRequest) {
       payment_method: body.payment_method || "cash",
       order_source: body.order_source || "pos",
     };
+
+    // If admin (merchant) is creating a POS sale, attach their store id so sales are store-scoped
+    if (auth.user.storeId) {
+      saleData.storeId = auth.user.storeId;
+    }
 
     // Validate schema
     const data = insertSaleSchema.parse(saleData);

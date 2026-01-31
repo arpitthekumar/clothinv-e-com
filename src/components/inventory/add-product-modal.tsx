@@ -241,10 +241,22 @@ export function AddProductModal({
       form.reset();
       onClose();
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      // Try to extract server-provided JSON error details if present
+      let description = error?.message ?? "Failed to add product";
+      try {
+        const match = description.match(/\d+: (\{.*\})/);
+        if (match) {
+          const parsed = JSON.parse(match[1]);
+          description = parsed.details || parsed.error || description;
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+
       toast({
         title: "Error",
-        description: error.message,
+        description,
         variant: "destructive",
       });
     },

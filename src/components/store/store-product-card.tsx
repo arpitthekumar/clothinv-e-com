@@ -23,7 +23,16 @@ export function StoreProductCard({ product }: { product: Product }) {
       <div className="aspect-square bg-muted relative overflow-hidden">
         {product.image ? (
           <img
-            src={product.image.startsWith("data:") ? product.image : product.image}
+            src={(() => {
+              try {
+                // lazy import helper to ensure env var usage
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const { getPublicImageUrl } = require("@/lib/media");
+                return getPublicImageUrl(product.image) || product.image;
+              } catch (e) {
+                return product.image;
+              }
+            })()}
             alt={product.name}
             className="object-cover w-full h-full"
           />

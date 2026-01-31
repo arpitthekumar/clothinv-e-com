@@ -12,7 +12,6 @@ export default function NotFound() {
   return (
     <>
       <Navbar />
-
       <div className="min-h-screen w-full flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="pt-6">
@@ -20,11 +19,9 @@ export default function NotFound() {
               <AlertCircle className="h-8 w-8 text-red-500" />
               <h1 className="text-2xl font-bold">404 Page Not Found</h1>
             </div>
-
             <p className="mt-4 text-sm text-muted-foreground">
               Did you forget to add the page to the router?
             </p>
-
             {/* ACTIONS */}
             <div className="mt-6 items-center flex gap-3">
               <Button
@@ -35,7 +32,6 @@ export default function NotFound() {
                 <ArrowLeft className="h-4 w-4" />
                 Go Back
               </Button>
-
               <Button onClick={() => router.push("/")}>
                 Go Home
               </Button>

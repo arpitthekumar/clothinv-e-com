@@ -6,12 +6,10 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col min-h-screen justify-between">
       <Navbar />
-      <main className="container flex-1 px-4 py-12 max-w-2xl">
-        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground mb-6 inline-block">
-          ← Back to home
-        </Link>
+      <main className="mx-auto w-full max-w-7xl px-4 py-20">
+        
         <h1 className="text-3xl font-bold mb-6">Contact us</h1>
         <p className="text-muted-foreground mb-6">
           Have a question or need support? Reach out through the channels below.
