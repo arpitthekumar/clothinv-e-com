@@ -429,21 +429,35 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- Ensure DB role privileges are set for service/anon/authenticated roles so
 -- server (service role) and public registration (anon) can perform the intended operations.
-DO $$ BEGIN
-  -- Grant privileged role (service_role) full access to users
+DO $$ DECLARE
+  tbls text[] := ARRAY[
+    'users','categories','products','product_categories','promotions','promotion_targets','discount_coupons',
+    'payments','orders','sales','sale_items','sales_returns','sales_return_items','stock_movements','sync_status',
+    'merchant_requests','product_cost_history','product_price_history','customers'
+  ];
+  t text;
+BEGIN
+  -- Grant privileged role (service_role) full access to core tables
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    GRANT SELECT, INSERT, UPDATE, DELETE ON users TO service_role;
+    FOREACH t IN ARRAY tbls LOOP
+      EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I TO service_role', t);
+    END LOOP;
   END IF;
 
-  -- Allow anonymous clients to INSERT (public registration) but rely on RLS to constrain inserts
+  -- Allow anonymous clients to SELECT core public data (visibility gated by RLS)
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-    GRANT INSERT ON users TO anon;
-    GRANT SELECT ON users TO anon;
+    FOREACH t IN ARRAY tbls LOOP
+      EXECUTE format('GRANT SELECT ON %I TO anon', t);
+    END LOOP;
+    -- Allow public registration to insert into users (RLS limits which rows can be inserted)
+    EXECUTE 'GRANT INSERT ON users TO anon';
   END IF;
 
-  -- Allow authenticated (logged-in) role to select/update their own records (policy enforced)
+  -- Allow authenticated (logged-in) role to select/update (policy enforced)
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-    GRANT SELECT, UPDATE ON users TO authenticated;
+    FOREACH t IN ARRAY tbls LOOP
+      EXECUTE format('GRANT SELECT, UPDATE ON %I TO authenticated', t);
+    END LOOP;
   END IF;
 END $$;
 

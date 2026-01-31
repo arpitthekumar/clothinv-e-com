@@ -66,6 +66,12 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 # ==================== NEXT.JS ====================
 NODE_ENV=development
 
+# ==================== SESSIONS (server only) ====
+# Strong random secret used by iron-session. Required for server sessions.
+SESSION_SECRET=your_strong_random_secret_here
+# Session lifetime in seconds (default 20 days):
+SESSION_MAX_AGE=1728000
+
 # ==================== OPTIONAL ====================
 # RAZORPAY_KEY_ID=your_key_here (for payments)
 # RAZORPAY_KEY_SECRET=your_secret_here

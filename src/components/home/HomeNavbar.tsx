@@ -10,8 +10,8 @@ export function HomeNavbar() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-      <div className="container flex h-16 items-center gap-4 px-4">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95  backdrop-blur">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <span className="text-xl">ShopFlow</span>
         </Link>
