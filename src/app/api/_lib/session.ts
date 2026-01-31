@@ -1,6 +1,7 @@
 import { getIronSession, type IronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { type User } from "@shared/schema";
+import crypto from "crypto";
 
 export type SessionData = {
   user?: User;
@@ -8,8 +9,22 @@ export type SessionData = {
 
 export async function getSession(): Promise<IronSession<SessionData>> {
   const cookieStore = await cookies();
+
+  // Ensure SESSION_SECRET is present. For local development, use a dev fallback
+  // to avoid crashing the dev server, but warn the developer.
+  let password = process.env.SESSION_SECRET;
+  if (!password && process.env.NODE_ENV === "development") {
+    // Generate a secure random secret for local dev that satisfies iron-session length.
+    password = crypto.randomBytes(48).toString("hex");
+    // eslint-disable-next-line no-console
+    console.warn("SESSION_SECRET not set — using secure development fallback. Set SESSION_SECRET in env for production.");
+  }
+  if (!password) {
+    throw new Error("Missing SESSION_SECRET environment variable. Set SESSION_SECRET to a strong secret.");
+  }
+
   const session = await getIronSession<SessionData>(cookieStore, {
-    password: process.env.SESSION_SECRET!,
+    password,
     cookieName: "clothinv.sid",
     cookieOptions: {
       secure: process.env.NODE_ENV === "production",

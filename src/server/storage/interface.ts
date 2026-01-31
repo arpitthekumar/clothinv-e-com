@@ -20,6 +20,7 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   /** Users belonging to a store (admin sees only their store's users). */
   getUsersByStore(storeId: string): Promise<User[]>;
+  getStores(): Promise<Array<{ id: string; name: string }>>;
 
   getCategories(): Promise<Category[]>;
   /** Categories visible on store (visibility=online, approval_status=approved) */

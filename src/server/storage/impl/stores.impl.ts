@@ -36,3 +36,11 @@ export async function getStoreByOwnerId(
   if (error) throw error;
   return (data ?? undefined) as StoreRow | undefined;
 }
+
+export async function getStores(
+  client: SupabaseServerClient
+): Promise<Array<{ id: string; name: string }>> {
+  const { data, error } = await client.from("stores").select("id, name");
+  if (error) throw error;
+  return (data ?? []) as Array<{ id: string; name: string }>;
+}

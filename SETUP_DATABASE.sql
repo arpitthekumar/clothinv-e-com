@@ -414,6 +414,37 @@ CREATE INDEX idx_payments_status ON payments(status);
 
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- USERS: Minimal safe RLS to allow public customer registration and self-management.
+-- NOTE: Admin-level management (create/edit/delete users across stores) requires
+-- the Supabase service role key (SUPABASE_SERVICE_ROLE_KEY) so server APIs can
+-- run with elevated privileges and avoid RLS complexities.
+
+-- Public registrations: allow unauthenticated inserts when role = 'customer'
+CREATE POLICY "public_insert_customers" ON users
+  FOR INSERT WITH CHECK (
+    role = 'customer' AND (store_id IS NULL OR store_id = '')
+  );
+
+-- SELECT: Users may select their own record
+CREATE POLICY "select_users_self" ON users
+  FOR SELECT USING (
+    users.id = auth.uid()::text
+  );
+
+-- UPDATE: Users may update their own record (e.g., change password/fullName)
+CREATE POLICY "update_users_self" ON users
+  FOR UPDATE USING (
+    users.id = auth.uid()::text
+  ) WITH CHECK (
+    users.id = auth.uid()::text
+  );
+
+-- DELETE: Disallow public deletes; super_admin deletes should be done via
+-- service-role server operations, not RLS
+CREATE POLICY "delete_users_none" ON users
+  FOR DELETE USING (false);
+
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_categories ENABLE ROW LEVEL SECURITY;

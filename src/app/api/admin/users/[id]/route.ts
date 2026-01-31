@@ -17,6 +17,11 @@ export async function PUT(
     return NextResponse.json({ error: "Only Super Admin can assign Super Admin role" }, { status: 403 });
   }
 
+  // Admins cannot change another user's store assignment to a different store.
+  if (body.storeId && auth.user.role === "admin" && auth.user.storeId !== body.storeId) {
+    return NextResponse.json({ error: "Admins can only assign users to their own store" }, { status: 403 });
+  }
+
   const user = await storage.updateUser(id, body);
   if (!user) return NextResponse.json({}, { status: 404 });
 
