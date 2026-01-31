@@ -11,6 +11,7 @@ import { insertUserSchema } from "@shared/schema";
 import { redirect } from "next/navigation";
 import { Store, Shield, Users, BarChart3 } from "lucide-react";
 import { z } from "zod";
+import Link from "next/link";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -83,9 +84,9 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Username</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Enter your username" 
-                              {...field} 
+                            <Input
+                              placeholder="Enter your username"
+                              {...field}
                               data-testid="input-login-username"
                             />
                           </FormControl>
@@ -101,10 +102,10 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="password" 
-                              placeholder="Enter your password" 
-                              {...field} 
+                            <Input
+                              type="password"
+                              placeholder="Enter your password"
+                              {...field}
                               data-testid="input-login-password"
                             />
                           </FormControl>
@@ -113,9 +114,9 @@ export default function AuthPage() {
                       )}
                     />
 
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
+                    <Button
+                      type="submit"
+                      className="w-full"
                       disabled={loginMutation.isPending}
                       data-testid="button-login-submit"
                     >
@@ -123,6 +124,9 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
+                <Link href="/register" className="text-sm text-primary hover:underline">
+                  Don't have an account? Register
+                </Link>
               </CardContent>
             </Card>
           ) : null}
@@ -134,10 +138,10 @@ export default function AuthPage() {
         <div className="max-w-md text-center">
           <h2 className="text-4xl font-bold mb-6">Modern Inventory Management</h2>
           <p className="text-lg text-primary-foreground/90 mb-8">
-            Streamline your clothing shop operations with offline-first inventory tracking, 
+            Streamline your clothing shop operations with offline-first inventory tracking,
             fast billing, and powerful analytics.
           </p>
-          
+
           <div className="space-y-4">
             <div className="flex items-center text-left">
               <div className="w-12 h-12 bg-primary-foreground/20 rounded-lg flex items-center justify-center mr-4">

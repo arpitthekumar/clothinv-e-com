@@ -62,17 +62,30 @@ export async function getUserByUsername(
   return data ? (mapFromDb(data) as User) : undefined;
 }
 
+import { ensureServiceRole } from "../supabase.client";
+
 export async function createUser(
   client: SupabaseServerClient,
   user: InsertUser
 ): Promise<User> {
+  // Ensure we are running with the service-role key on the server for user creation
+  ensureServiceRole();
+
   const payload = toDbUser(user as Record<string, unknown>);
   const { data, error } = await client
     .from("users")
     .insert(payload)
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) {
+    // Helpful guidance for permission errors (common when service role key not set)
+    if ((error as any).code === "42501" || /permission denied/.test((error as any).message ?? "")) {
+      throw new Error(
+        "Database permission denied. Ensure SUPABASE_SERVICE_ROLE_KEY is set in your server environment and restart the dev server."
+      );
+    }
+    throw error;
+  }
   return mapFromDb(data) as User;
 }
 

@@ -41,6 +41,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(user, { status: 201 });
   } catch (err: any) {
     console.error("Registration error:", err);
+    // Detect DB permission issues and return a clearer message
+    if (err?.message?.toLowerCase()?.includes("permission denied") || err?.message?.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      return NextResponse.json({ error: "Server DB permission denied. Ensure SUPABASE_SERVICE_ROLE_KEY is set in .env.local and restart the dev server." }, { status: 500 });
+    }
     return NextResponse.json({ error: err?.message ?? "Invalid user data" }, { status: 400 });
   }
 }

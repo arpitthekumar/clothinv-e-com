@@ -427,6 +427,26 @@ CREATE INDEX idx_payments_status ON payments(status);
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
+-- Ensure DB role privileges are set for service/anon/authenticated roles so
+-- server (service role) and public registration (anon) can perform the intended operations.
+DO $$ BEGIN
+  -- Grant privileged role (service_role) full access to users
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON users TO service_role;
+  END IF;
+
+  -- Allow anonymous clients to INSERT (public registration) but rely on RLS to constrain inserts
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    GRANT INSERT ON users TO anon;
+    GRANT SELECT ON users TO anon;
+  END IF;
+
+  -- Allow authenticated (logged-in) role to select/update their own records (policy enforced)
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    GRANT SELECT, UPDATE ON users TO authenticated;
+  END IF;
+END $$;
+
 -- USERS: Minimal safe RLS to allow public customer registration and self-management.
 -- NOTE: Admin-level management (create/edit/delete users across stores) requires
 -- the Supabase service role key (SUPABASE_SERVICE_ROLE_KEY) so server APIs can
