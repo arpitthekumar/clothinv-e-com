@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS product_categories (
 -- ============================
 CREATE TABLE IF NOT EXISTS customers (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  user_id VARCHAR(36) REFERENCES users(id),
   name TEXT NOT NULL,
   phone TEXT,
   email TEXT,
@@ -152,7 +153,7 @@ CREATE TABLE IF NOT EXISTS sales (
 CREATE TABLE IF NOT EXISTS orders (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
   store_id VARCHAR(36) REFERENCES stores(id) NOT NULL,
-  customer_id VARCHAR(36), -- user id if customer is logged in
+  customer_id VARCHAR(36), -- customer id (references customers.id). For logged-in users, link to their customer profile via customers.user_id
   customer_name TEXT NOT NULL,
   customer_phone TEXT NOT NULL,
   items JSONB NOT NULL, -- Array of {productId, quantity, price}
@@ -247,12 +248,22 @@ CREATE TABLE IF NOT EXISTS merchant_requests (
   status TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected
   reviewed_by VARCHAR(36),
   reviewed_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_merchant_requests_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- ============================
 -- 12. PRODUCT COST HISTORY TABLE
 -- ============================
+DO $$ BEGIN
+  -- Ensure FK constraint name exists for merchant_requests.user_id to avoid future typos/migrations.
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints tc WHERE tc.constraint_name = 'fk_merchant_requests_user' AND tc.table_name = 'merchant_requests'
+  ) THEN
+    ALTER TABLE merchant_requests ADD CONSTRAINT fk_merchant_requests_user FOREIGN KEY (user_id) REFERENCES users(id);
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS product_cost_history (
   id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
   product_id VARCHAR(36) NOT NULL REFERENCES products(id),
@@ -338,6 +349,7 @@ CREATE INDEX idx_stores_owner_id ON stores(owner_id);
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_store_id ON users(store_id);
 CREATE INDEX idx_users_auth_uid ON users(auth_uid);
+CREATE INDEX idx_customers_user_id ON customers(user_id);
 
 -- Categories
 CREATE INDEX idx_categories_name ON categories(name);
@@ -449,6 +461,30 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+
+-- CUSTOMERS: Allow staff/super_admin to manage customers; allow a user to select/update their linked customer
+CREATE POLICY "select_customers_self_or_staff" ON customers
+  FOR SELECT USING (
+    (customers.user_id = auth.uid()::text) OR EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR u.role IN ('admin','employee')))
+  );
+
+CREATE POLICY "insert_customers_staff_or_super" ON customers
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR u.role IN ('admin','employee')))
+  );
+
+CREATE POLICY "update_customers_self_or_staff" ON customers
+  FOR UPDATE USING (
+    (customers.user_id = auth.uid()::text) OR EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR u.role IN ('admin','employee')))
+  ) WITH CHECK (
+    (customers.user_id = auth.uid()::text) OR EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR u.role IN ('admin','employee')))
+  );
+
+CREATE POLICY "delete_customers_staff_or_super" ON customers
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND (u.role = 'super_admin' OR u.role IN ('admin','employee')))
+  );
+
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales_returns ENABLE ROW LEVEL SECURITY;
@@ -462,6 +498,26 @@ CREATE POLICY "sync_status_super_admin_only" ON sync_status
   );
 
 ALTER TABLE merchant_requests ENABLE ROW LEVEL SECURITY;
+
+-- Merchant requests: allow any authenticated user to create a request, allow super_admin to view/manage requests; owners may view their own request
+CREATE POLICY "insert_merchant_requests_authenticated" ON merchant_requests
+  FOR INSERT WITH CHECK (
+    auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "select_merchant_requests_super_or_owner" ON merchant_requests
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND u.role = 'super_admin')
+    OR merchant_requests.user_id = auth.uid()::text
+  );
+
+CREATE POLICY "update_merchant_requests_super_admin_only" ON merchant_requests
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND u.role = 'super_admin')
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND u.role = 'super_admin')
+  );
+
 ALTER TABLE product_cost_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_price_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
@@ -580,7 +636,7 @@ CREATE POLICY "delete_categories_store_admin_or_super" ON categories
 CREATE POLICY "insert_orders_customers_or_staff" ON orders
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND (
-      (EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND u.role = 'customer' AND orders.customer_id = auth.uid()::text)) OR
+      (EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND u.role = 'customer' AND (orders.customer_id = auth.uid()::text OR EXISTS (SELECT 1 FROM customers c WHERE c.id = orders.customer_id AND c.user_id = auth.uid()::text)))) OR
       (EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND ((u.role IN ('admin','employee')) AND u.store_id = orders.store_id))) OR
       (EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()::text AND u.role = 'super_admin'))
     )
@@ -589,7 +645,7 @@ CREATE POLICY "insert_orders_customers_or_staff" ON orders
 CREATE POLICY "select_orders_customer_store_staff_or_super" ON orders
   FOR SELECT USING (
     auth.uid() IS NOT NULL AND (
-      orders.customer_id = auth.uid()::text OR
+      (orders.customer_id = auth.uid()::text OR EXISTS (SELECT 1 FROM customers c WHERE c.id = orders.customer_id AND c.user_id = auth.uid()::text)) OR
       EXISTS (SELECT 1 FROM users u WHERE (u.auth_uid = auth.uid()::text OR u.id = auth.uid()::text) AND (u.role = 'super_admin' OR (u.store_id = orders.store_id AND (u.role IN ('admin','employee')))))
     )
   );

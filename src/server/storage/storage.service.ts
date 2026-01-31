@@ -28,6 +28,7 @@ import * as paymentsImpl from "./impl/payments.impl";
 import * as ordersImpl from "./impl/orders.impl";
 import * as couponsImpl from "./impl/coupons.impl";
 import * as merchantImpl from "./impl/merchant.impl";
+import * as customersImpl from "./impl/customers.impl";
 import * as storesImpl from "./impl/stores.impl";
 
 function getClient() {
@@ -193,4 +194,8 @@ export class SupabaseStorage implements IStorage {
     id: string,
     data: { status: string; reviewedBy?: string }
   ) => merchantImpl.updateMerchantRequest(this.client, id, data);
+
+  // Customers (POS & user-linked customer profiles)
+  getCustomerByUser = (userId: string) => customersImpl.getCustomerByUser(this.client, userId);
+  createCustomer = (data: import("@shared/schema").InsertCustomer & { userId?: string }) => customersImpl.createCustomer(this.client, data);
 }

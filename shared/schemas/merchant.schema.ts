@@ -1,13 +1,14 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod";
+import { users } from "./user.schema";
 
 /** Merchant onboarding requests. Super Admin approves → user becomes admin (merchant). */
 export const merchantRequests = pgTable("merchant_requests", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   shopName: text("shop_name").notNull(),
   address: text("address"),
   businessDetails: text("business_details"),

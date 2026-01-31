@@ -126,7 +126,7 @@ The system uses **20 main tables**:
 | `users` | Employee/admin accounts |
 | `categories` | Product categories |
 | `products` | Inventory items |
-| `customers` | Customer information |
+| `customers` | Customer information (POS offline customers; optional link to `users` via `user_id` for registered customers) |
 
 ### Sales & Orders
 | Table | Purpose |
@@ -206,6 +206,8 @@ Once the app is running:
 - Create a test user in the app
 - Check Supabase → **Table Editor** → `users` table
 - Make sure your new user appears there
+
+> Note: Registration now creates a linked customer profile in the `customers` table (nullable `user_id`). If your `customers` table does not contain a `user_id` column, re-run `SETUP_DATABASE.sql` in the SQL editor or apply the migration to add `user_id` as a nullable foreign key to `users(id)`.
 
 ### Issue: Can't connect to Supabase
 **Solution:**

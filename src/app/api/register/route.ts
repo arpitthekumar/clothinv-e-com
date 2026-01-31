@@ -25,6 +25,14 @@ export async function POST(req: NextRequest) {
 
     const user = await storage.createUser(payload as any);
 
+    // Create a linked customer record (optional) so checkout/sales can reference a customer profile
+    try {
+      await storage.createCustomer({ userId: user.id, name: user.fullName });
+    } catch (err) {
+      // Non-fatal: log but continue (customer profile is optional)
+      console.warn("Failed to create linked customer profile:", err);
+    }
+
     // Create session for newly registered user
     const session = await getSession();
     session.user = user as any;

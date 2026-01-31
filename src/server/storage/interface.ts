@@ -61,6 +61,10 @@ export interface IStorage {
   restoreSale(saleId: string): Promise<boolean>;
   deleteSale(saleId: string): Promise<boolean>;
 
+  // Customers (POS and linked user profiles)
+  getCustomerByUser(userId: string): Promise<import("@shared/schema").Customer | undefined>;
+  createCustomer(data: import("@shared/schema").InsertCustomer & { userId?: string }): Promise<import("@shared/schema").Customer>;
+
   // Orders (online e-commerce order lifecycle)
   getOrders(includeProcessed?: boolean): Promise<import("@shared/schema").Order[]>;
   getOrderById(id: string): Promise<import("@shared/schema").Order | undefined>;

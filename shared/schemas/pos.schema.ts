@@ -17,6 +17,7 @@ export const customers = pgTable("customers", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
   name: text("name").notNull(),
   phone: text("phone"),
   email: text("email"),
@@ -94,6 +95,7 @@ export const insertCustomerSchema = createInsertSchema(customers).pick({
   name: true,
   phone: true,
   email: true,
+  userId: true,
 });
 
 export const insertDiscountCouponSchema = createInsertSchema(
