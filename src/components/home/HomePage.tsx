@@ -9,10 +9,14 @@ export function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="container flex-1 px-4 py-8 space-y-10">
-        <HomeHero />
-        <HomeProductGrid />
+
+      <main className="flex-1">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 space-y-10">
+          <HomeHero />
+          <HomeProductGrid />
+        </div>
       </main>
+
       <HomeFooter />
     </div>
   );

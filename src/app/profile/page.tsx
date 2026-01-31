@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/ui/Navbar";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,8 +10,15 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function ProfilePage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logoutMutation } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState("account");
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/auth");
+    }
+  }, [isLoading, user, router]);
 
   const { data: orders = [], isLoading: loadingOrders } = useQuery({
     queryKey: ["/api/orders"],
@@ -22,7 +30,7 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
-  if (!isLoading && !user) return null;
+  if (isLoading) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,6 +71,12 @@ export default function ProfilePage() {
                 <CardContent>
                   <p><strong>Name:</strong> {user?.fullName ?? user?.username}</p>
                   <p><strong>Role:</strong> {user?.role}</p>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" onClick={() => logoutMutation.mutate()}>
+                      Logout
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
