@@ -88,6 +88,9 @@ export default function Page() {
                 <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                   {registerMutation.isPending ? "Registering..." : "Create account"}
                 </Button>
+                <Button variant="ghost" className="w-full" onClick={() => router.push("/auth")}>
+                  Back to Sign In
+                </Button>
               </form>
             </Form>
           </CardContent>

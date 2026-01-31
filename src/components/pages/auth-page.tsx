@@ -1,14 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertUserSchema } from "@shared/schema";
-import { redirect } from "next/navigation";
 import { Store, Shield, Users, BarChart3 } from "lucide-react";
 import { z } from "zod";
 import Link from "next/link";
@@ -24,6 +23,7 @@ export default function AuthPage() {
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") ?? "";
   const { user, loginMutation } = useAuth();
+  const router = useRouter();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -33,19 +33,22 @@ export default function AuthPage() {
     },
   });
 
-
-  if (user) {
+  useEffect(() => {
+    if (!user) return;
     if (returnUrl && returnUrl.startsWith("/store")) {
-      redirect(returnUrl);
+      router.replace(returnUrl);
+      return;
     }
     if (user.role === "super_admin" || user.role === "admin") {
-      redirect("/");
+      router.replace("/");
+      return;
     }
     if (user.role === "customer") {
-      redirect("/store");
+      router.replace("/store");
+      return;
     }
-    redirect("/pos");
-  }
+    router.replace("/pos");
+  }, [user, returnUrl, router]);
 
   const onLoginSubmit = (data: LoginFormValues) => {
     loginMutation.mutate(data);
@@ -124,9 +127,14 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
-                <Link href="/register" className="text-sm text-primary hover:underline">
-                  Don't have an account? Register
-                </Link>
+                <div className="flex items-center justify-between mt-2">
+                  <Link href="/register" className="text-sm text-primary hover:underline">
+                    Don't have an account? Register
+                  </Link>
+                  <Link href="/" className="text-sm text-primary hover:underline  block">
+                    Continue to Store
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ) : null}

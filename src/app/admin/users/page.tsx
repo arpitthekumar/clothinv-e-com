@@ -186,13 +186,13 @@ export default function AdminUsersPage() {
                 {user?.role === "super_admin" && (
                   <Select
                     onValueChange={(v) => (newUser.storeId = v)}
-                    defaultValue={newUser.storeId ?? ""}
+                    defaultValue={newUser.storeId ?? "__platform__"}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Assign store (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Platform-wide</SelectItem>
+                      <SelectItem value="__platform__">Platform-wide</SelectItem>
                       {Array.isArray(storesQuery.data) &&
                         storesQuery.data.map((s: any) => (
                           <SelectItem key={s.id} value={s.id}>
@@ -239,8 +239,8 @@ export default function AdminUsersPage() {
                         (newUser as any).storeId = user.storeId;
                       }
 
-                      // normalize empty string to null (platform-wide)
-                      if ((newUser as any).storeId === "") (newUser as any).storeId = null;
+                      // normalize sentinel/empty string to null (platform-wide)
+                      if ((newUser as any).storeId === "" || (newUser as any).storeId === "__platform__") (newUser as any).storeId = null;
 
                       // if all good, proceed
                       addMutation.mutate(newUser);
@@ -405,15 +405,15 @@ export default function AdminUsersPage() {
                       <Label>Store (optional)</Label>
                       <Select
                         onValueChange={(v) =>
-                          setEditingUser({ ...editingUser, storeId: v || null })
+                          setEditingUser({ ...editingUser, storeId: v === "__platform__" ? null : v })
                         }
-                        defaultValue={editingUser.storeId ?? ""}
+                        defaultValue={editingUser.storeId ?? "__platform__"}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Assign store (optional)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Platform-wide</SelectItem>
+                          <SelectItem value="__platform__">Platform-wide</SelectItem>
                           {Array.isArray(storesQuery.data) &&
                             storesQuery.data.map((s: any) => (
                               <SelectItem key={s.id} value={s.id}>

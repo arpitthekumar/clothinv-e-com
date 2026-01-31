@@ -1,11 +1,19 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/auth");
+    }
+  }, [isLoading, user, router]);
 
   if (isLoading) {
     return (
@@ -15,9 +23,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!user) {
-    redirect("/auth");
-  }
+  if (!user) return null;
 
   return <>{children}</>;
 }

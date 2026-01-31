@@ -431,7 +431,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 -- server (service role) and public registration (anon) can perform the intended operations.
 DO $$ DECLARE
   tbls text[] := ARRAY[
-    'users','categories','products','product_categories','promotions','promotion_targets','discount_coupons',
+    'stores','users','categories','products','product_categories','promotions','promotion_targets','discount_coupons',
     'payments','orders','sales','sale_items','sales_returns','sales_return_items','stock_movements','sync_status',
     'merchant_requests','product_cost_history','product_price_history','customers'
   ];

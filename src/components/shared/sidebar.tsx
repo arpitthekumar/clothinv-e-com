@@ -79,21 +79,21 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const adminMenuItems = [
     { href: "/", icon: BarChart3, label: "Dashboard" },
     { href: "/admin/users", icon: Users, label: "Users" },
-    { href: "/inventory", icon: Package, label: "Inventory" },
-    { href: "/sales", icon: Receipt, label: "Sales Management" },
-    { href: "/reports", icon: FileBarChart, label: "Reports" },
-    { href: "/settings", icon: Settings, label: "Settings" },
+    { href: "/admin/inventory", icon: Package, label: "Inventory" },
+    { href: "/admin/sales", icon: Receipt, label: "Sales Management" },
+    { href: "/admin/reports", icon: FileBarChart, label: "Reports" },
+    { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 
   const employeeMenuItems = [
     { href: "/", icon: BarChart3, label: "Dashboard" },
-    { href: "/inventory", icon: Package, label: "Inventory" },
-    { href: "/sales", icon: Receipt, label: "Sales Management" },
+    { href: "/admin/inventory", icon: Package, label: "Inventory" },
+    { href: "/admin/sales", icon: Receipt, label: "Sales Management" },
   ];
 
   const commonMenuItems = [
     { href: "/store", icon: Store, label: "Shop" },
-    ...(user?.role !== "super_admin" ? [{ href: "/pos", icon: ScanBarcode, label: "Point of Sale" }] : []),
+    ...(user?.role !== "super_admin" ? [{ href: "/admin/pos", icon: ScanBarcode, label: "Point of Sale" }] : []),
   ];
 
   const menuItems =
