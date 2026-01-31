@@ -242,6 +242,19 @@ export default function AdminUsersPage() {
                       // normalize sentinel/empty string to null (platform-wide)
                       if ((newUser as any).storeId === "" || (newUser as any).storeId === "__platform__") (newUser as any).storeId = null;
 
+                      // Enforce: employee/admin must always have a storeId
+                      if (
+                        (newUser.role === "employee" || newUser.role === "admin") &&
+                        !(newUser as any).storeId
+                      ) {
+                        toast({
+                          title: "Store is required",
+                          description: "Employees/Admins must be assigned to a store.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
                       // if all good, proceed
                       addMutation.mutate(newUser);
                     }}
@@ -433,14 +446,29 @@ export default function AdminUsersPage() {
                     </Button>
                     <Button
                       onClick={() =>
-                        editMutation.mutate({
-                          id: editingUser.id,
-                          username: editingUser.username,
-                          fullName: editingUser.fullName,
-                          role: editingUser.role,
-                          password: editingUser.password,
-                          storeId: (editingUser as any).storeId,
-                        })
+                        (() => {
+                          const nextRole = editingUser.role;
+                          const nextStoreId = (editingUser as any).storeId;
+                          if (
+                            (nextRole === "employee" || nextRole === "admin") &&
+                            !nextStoreId
+                          ) {
+                            toast({
+                              title: "Store is required",
+                              description: "Employees/Admins must be assigned to a store.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          editMutation.mutate({
+                            id: editingUser.id,
+                            username: editingUser.username,
+                            fullName: editingUser.fullName,
+                            role: editingUser.role,
+                            password: editingUser.password,
+                            storeId: (editingUser as any).storeId,
+                          });
+                        })()
                       }
                     >
                       Save

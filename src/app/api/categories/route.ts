@@ -20,14 +20,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const data = insertCategorySchema.parse(await req.json());
+    const body = await req.json();
+    const data = insertCategorySchema.parse(body);
     const category = await storage.createCategory(data);
     return NextResponse.json(category, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid category data" },
-      { status: 400 }
-    );
+  } catch (err: any) {
+    // If this is a Zod validation error, surface detailed issues
+    if (err?.issues) {
+      return NextResponse.json({ error: "Invalid category data", details: err.issues }, { status: 400 });
+    }
+
+    // If it's a DB error, return its message to help debugging
+    return NextResponse.json({ error: err?.message ?? "Invalid category data" }, { status: 400 });
   }
 }
 

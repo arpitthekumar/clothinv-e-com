@@ -20,6 +20,12 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
   if (auth.user.role !== "admin" && auth.user.role !== "super_admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role === "admin" && !auth.user.storeId) {
+    return NextResponse.json(
+      { error: "Admin account is missing store assignment (storeId)." },
+      { status: 400 }
+    );
+  }
 
   try {
     const body = await req.json();
@@ -30,10 +36,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Only Super Admin can create a Super Admin" }, { status: 403 });
     }
 
-    // Admin adds users to their store only; Super Admin can set any store or omit.
-    const createPayload = { ...data, password: data.password };
-    if (auth.user.role === "admin" && auth.user.storeId) {
-      (createPayload as any).storeId = auth.user.storeId;
+    // Admin adds users to their store automatically.
+    const createPayload: any = { ...data, password: data.password };
+    if (auth.user.role === "admin") {
+      createPayload.storeId = auth.user.storeId;
+    }
+
+    // Enforce: employees must always have a store.
+    const effectiveRole = createPayload.role;
+    const effectiveStoreId = createPayload.storeId;
+    if ((effectiveRole === "employee" || effectiveRole === "admin") && !effectiveStoreId) {
+      return NextResponse.json(
+        { error: "Employees/Admins must be assigned to a store (storeId is required)." },
+        { status: 400 }
+      );
     }
 
     // Check if username exists

@@ -24,17 +24,30 @@ export async function getCategoriesForStore(
   return (data ?? []) as Category[];
 }
 
+function slugify(input: string) {
+  return input
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export async function createCategory(
   client: SupabaseServerClient,
   category: InsertCategory
 ): Promise<Category> {
-  const payload = {
+  const payload: any = {
     id: crypto.randomUUID(),
     name: category.name,
     description: category.description ?? null,
     color: category.color ?? "white",
     visibility: (category as any).visibility ?? "offline",
     approval_status: (category as any).approvalStatus ?? "approved",
+    slug: (category as any).slug ?? slugify(category.name),
+    store_id: (category as any).storeId ?? null,
   };
   const { data, error } = await client
     .from("categories")

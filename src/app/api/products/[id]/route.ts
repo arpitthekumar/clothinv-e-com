@@ -10,6 +10,18 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
   const product = await storage.getProduct(params.id);
   if (!product) return NextResponse.json({}, { status: 404 });
+  if (auth.user.role === "admin" || auth.user.role === "employee") {
+    if (!auth.user.storeId) {
+      return NextResponse.json(
+        { error: "Your account is missing store assignment (storeId)." },
+        { status: 400 }
+      );
+    }
+    const storeId = (product as any).storeId ?? (product as any).store_id;
+    if (storeId && storeId !== auth.user.storeId) {
+      return NextResponse.json({}, { status: 404 });
+    }
+  }
   return NextResponse.json(mapProductFromDb(product));
 }
 
@@ -18,8 +30,24 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
   if (auth.user.role !== "admin" && auth.user.role !== "super_admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role === "admin" && !auth.user.storeId) {
+    return NextResponse.json(
+      { error: "Admin account is missing store assignment (storeId)." },
+      { status: 400 }
+    );
+  }
 
   try {
+    // Ensure admin can only update products in their store
+    if (auth.user.role === "admin") {
+      const existing = await storage.getProduct(params.id);
+      if (!existing) return NextResponse.json({}, { status: 404 });
+      const storeId = (existing as any).storeId ?? (existing as any).store_id;
+      if (storeId && storeId !== auth.user.storeId) {
+        return NextResponse.json({}, { status: 404 });
+      }
+    }
+
     const body = await req.json();
     
     // Clean up buyingPrice: remove it if empty, otherwise keep the value
@@ -39,7 +67,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const data = insertProductSchema.partial().parse(body);
     
     // Map all fields to database column names (snake_case for Supabase)
-    const dbData = mapProductToDb(data);
+    const dbData = mapProductToDb({
+      ...data,
+      // Admin cannot change store assignment.
+      ...(auth.user.role === "admin" ? { storeId: auth.user.storeId } : {}),
+    });
     
     // Log what we're sending for debugging
     console.log("Updating product with data:", JSON.stringify(dbData, null, 2));
