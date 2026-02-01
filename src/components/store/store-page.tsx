@@ -7,7 +7,6 @@ import { StoreCartDrawer } from "./store-cart-drawer";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { Navbar } from "@/components/ui/Navbar";
 import { Input } from "@/components/ui/input";
 import { HomeFooter } from "../home/HomeFooter";
 
@@ -40,7 +39,6 @@ export default function StorePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-between">
-      <Navbar />
 
       <main className="container px-4 py-6">
         {categories.length > 0 && (
@@ -82,7 +80,6 @@ export default function StorePage() {
           </div>
         )}
       </main>
-      <HomeFooter/>
     </div>
   );
 }

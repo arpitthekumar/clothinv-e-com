@@ -46,14 +46,22 @@ export function HomeProductGrid() {
       <section>
         <h2 className="text-xl font-semibold mb-4">Featured products</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {products.slice(0, 10).map((p: { id: string; name: string; price: string; image?: string | null }) => (
-            <Link key={p.id} href={`/store?product=${p.id}`}>
+          {products.slice(0, 10).map((p: { id: string; name: string; price: string; image?: string | null; slug?: string | null }) => (
+            <Link key={p.id} href={`/store/product/${(p as any).slug ?? p.id}`}>
               <Card className="overflow-hidden h-full hover:shadow-md transition-shadow">
                 <div className="aspect-square bg-muted relative overflow-hidden">
                   {p.image ? (
                     <img
-                      src={p.image.startsWith("data:") ? p.image : p.image}
-                      alt={p.name}
+                      src={(() => {
+                        try {
+                          // lazy import helper to ensure env var usage
+                          // eslint-disable-next-line @typescript-eslint/no-var-requires
+                          const { getPublicImageUrl } = require("@/lib/media");
+                          return getPublicImageUrl(p.image) || p.image;
+                        } catch (e) {
+                          return p.image;
+                        }
+                      })()}                      alt={p.name}
                       className="object-cover w-full h-full"
                     />
                   ) : (
@@ -68,7 +76,7 @@ export function HomeProductGrid() {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+          ))} 
         </div>
         {products.length > 10 && (
           <div className="mt-4 text-center">
@@ -91,14 +99,22 @@ export function HomeProductGrid() {
                 <div key={cat.id}>
                   <h3 className="text-lg font-medium mb-3">{cat.name}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {items.slice(0, 4).map((p: { id: string; name: string; price: string; image?: string | null }) => (
-                      <Link key={p.id} href={`/store?product=${p.id}`}>
+                    {items.slice(0, 4).map((p: { id: string; name: string; price: string; image?: string | null; slug?: string | null }) => (
+                      <Link key={p.id} href={`/store/product/${(p as any).slug ?? p.id}`}>
                         <Card className="overflow-hidden h-full hover:shadow-md transition-shadow">
                           <div className="aspect-square bg-muted relative overflow-hidden">
                             {p.image ? (
                               <img
-                                src={p.image.startsWith("data:") ? p.image : p.image}
-                                alt={p.name}
+                                src={(() => {
+                                  try {
+                                    // lazy import helper to ensure env var usage
+                                    // eslint-disable-next-line @typescript-eslint/no-var-requires
+                                    const { getPublicImageUrl } = require("@/lib/media");
+                                    return getPublicImageUrl(p.image) || p.image;
+                                  } catch (e) {
+                                    return p.image;
+                                  }
+                                })()}                                alt={p.name}
                                 className="object-cover w-full h-full"
                               />
                             ) : (
@@ -113,7 +129,7 @@ export function HomeProductGrid() {
                           </CardContent>
                         </Card>
                       </Link>
-                    ))}
+                    ))} 
                   </div>
                   <Link href={`/store/category/${(cat as any).slug ?? cat.id}`} className="inline-block mt-2">
                     <Button variant="ghost" size="sm">View all in {cat.name}</Button>

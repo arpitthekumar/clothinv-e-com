@@ -6,9 +6,16 @@ import ProductDetailClient from "@/components/store/product-detail-client";
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
   const { slug } = (await params) as { slug: string };
   const storage = new SupabaseStorage();
-  // Fetch all visible store products and find by slug or id
+  // Fetch all visible store products and find by slug or id (support id-prefixed slugs like <id>-<name>)
   const products = await storage.getProductsForStore(undefined);
-  const p = (products || []).find((x: any) => x.slug === slug || x.id === slug);
+  let p: any;
+  const uuidMatch = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i.exec(slug || "");
+  if (uuidMatch) {
+    const idPart = uuidMatch[1];
+    p = (products || []).find((x: any) => x.id === idPart || x.slug === slug || x.id === slug);
+  } else {
+    p = (products || []).find((x: any) => x.slug === slug || x.id === slug);
+  }
   if (!p) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -18,6 +25,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   }
 
   const product = mapProductFromDb(p);
+
+  // Fetch store name if available for display
+  if (product.storeId) {
+    try {
+      const storeInfo = await storage.getStoreById(product.storeId);
+      if (storeInfo) product.storeName = storeInfo.name;
+    } catch (e) {
+      // ignore
+    }
+  }
 
   // Ensure image URL is public when stored path
   try {

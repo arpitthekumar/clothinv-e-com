@@ -3,6 +3,7 @@ import type {
   Product,
   InsertProduct,
 } from "@shared/schema";
+import crypto from "crypto";
 
 export async function getProducts(
   client: SupabaseServerClient,
@@ -130,10 +131,15 @@ export async function createProduct(
     store_id: (product as any).store_id ?? (product as any).storeId ?? null,
   };
 
-  // Ensure a slug exists and is unique per store
+  // Ensure id exists so slug can include it (id-prefixed slug). Generate one on app side
+  if (!payload.id) {
+    payload.id = crypto.randomUUID();
+  }
+
+  // Ensure a slug exists and is unique per store. Use id-prefixed slug to guarantee uniqueness (id-name)
   if (!payload.slug || String(payload.slug).trim() === "") {
-    const base = slugify(product.name || crypto.randomUUID());
-    payload.slug = await uniqueSlugForStore(client, base, payload.store_id);
+    const base = slugify(product.name || payload.id);
+    payload.slug = `${payload.id}-${base}`;
   }
 
   const { data, error } = await client
@@ -154,10 +160,10 @@ export async function updateProduct(
   if ((product as any).storeId !== undefined) payload.store_id = (product as any).storeId;
   if ((product as any).store_id !== undefined) payload.store_id = (product as any).store_id;
 
-  // If slug is missing or empty, try to generate one using product name
+  // If slug is missing or empty, try to generate one using product name and include id to avoid collisions
   if ((!payload.slug || String(payload.slug).trim() === "") && product.name) {
     const base = slugify(product.name);
-    payload.slug = await uniqueSlugForStore(client, base, payload.store_id ?? null);
+    payload.slug = `${id}-${base}`;
   }
 
   const { data, error } = await client

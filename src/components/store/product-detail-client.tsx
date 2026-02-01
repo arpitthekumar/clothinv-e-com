@@ -13,6 +13,7 @@ export default function ProductDetailClient({ product, related = [] }: { product
   const [current, setCurrent] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const images = Array.isArray(product.images) && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
 
@@ -78,8 +79,13 @@ export default function ProductDetailClient({ product, related = [] }: { product
 
         <div className="w-full md:w-1/2">
           <h1 className="text-2xl font-semibold">{product.name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{product.sku}</p>
-          <p className="mt-4">{product.description}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            SKU: {product.sku ?? "—"} • Stock: {product.stock ?? "—"} • Store: {product.storeName ?? "Platform"} • Added: {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : "—"}
+          </p>
+          <p className={`mt-4 ${expanded ? '' : 'line-clamp-3'}`}>{product.description}</p>
+          {product.description && product.description.length > 200 && (
+            <button className="text-primary text-sm mt-2" onClick={() => setExpanded(!expanded)}>{expanded ? 'Show less' : 'Show more'}</button>
+          )}
           <p className="mt-4 text-xl font-medium">₹{parseFloat(product.price || "0").toFixed(2)}</p>
 
           <div className="flex gap-2 mt-6">

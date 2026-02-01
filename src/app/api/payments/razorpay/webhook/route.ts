@@ -39,9 +39,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (orderId) {
+      let storeId = null;
+      try {
+        const ord = await storage.getOrderById(orderId);
+        storeId = (ord as any)?.store_id ?? (ord as any)?.storeId ?? null;
+      } catch (e) {
+        // ignore
+      }
+
       await storage.createPayment({
         order_id: orderId,
-        store_id: null,
+        store_id: storeId,
         provider: "razorpay",
         order_provider_id,
         payment_id: pid,
