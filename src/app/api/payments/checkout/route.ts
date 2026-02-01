@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
 
     // Create payment record
     const payment = await storage.createPayment({
-      orderId: order.id,
-      storeId: (order as any).store_id ?? (order as any).storeId ?? null,
+      order_id: order.id,
+      store_id: (order as any).store_id ?? (order as any).storeId ?? null,
       provider,
       order_provider_id: null,
       payment_id: `simulated-${Date.now()}`,
