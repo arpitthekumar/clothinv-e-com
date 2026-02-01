@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { z } from "zod";
 import { tailwindColorMap, tailwindColors } from "@/lib/colors";
 
@@ -57,6 +58,8 @@ export function AddCategoryModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  const { user } = useAuth();
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -67,23 +70,35 @@ export function AddCategoryModal({
     },
   });
 
+  const selectedVisibility = form.watch("visibility");
+
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
       const visibility = data.visibility ?? "offline";
-      const payload = {
+      const payload: any = {
         ...data,
         visibility,
         // Online categories require Super Admin approval; default offline is approved.
         approvalStatus: visibility === "online" ? "pending" : "approved",
       };
+
+      // If user is not super_admin, scope the category to their store and prevent direct online visibility
+      if (user?.role !== "super_admin") {
+        payload.storeId = user?.storeId ?? payload.storeId ?? null;
+        if (visibility === "online") {
+          payload.approvalStatus = "pending";
+          payload.visibility = "offline";
+        }
+      }
+
       const response = await apiRequest("POST", "/api/categories", payload);
       return await response.json();
     },
     onSuccess: (newCategory) => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       toast({
-        title: "Success",
-        description: "Category created successfully",
+        title: (newCategory?.approval_status ?? newCategory?.approvalStatus) === "pending" ? "Category created (pending approval)" : "Success",
+        description: (newCategory?.approval_status ?? newCategory?.approvalStatus) === "pending" ? "Category created and pending Super Admin approval." : "Category created successfully",
       });
       form.reset();
       onCategoryCreated?.(newCategory);
@@ -178,12 +193,17 @@ export function AddCategoryModal({
                     </FormControl>
                     <SelectContent>
                       {CATEGORY_VISIBILITY.map((v) => (
-                        <SelectItem key={v} value={v}>
+                        <SelectItem key={v} value={v} disabled={v === "online" && user?.role === "employee"}>
                           {v === "online" ? "Online (requires Super Admin approval)" : "Offline (POS only)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedVisibility === "online" && user?.role !== "super_admin" && (
+                    <p className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded mt-2">
+                      Selecting "Online" will create a pending approval request and the category will remain offline until a Super Admin approves it.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

@@ -24,6 +24,19 @@ export async function getCategoriesForStore(
   return (data ?? []) as Category[];
 }
 
+export async function getCategoryById(
+  client: SupabaseServerClient,
+  id: string
+): Promise<Category | null> {
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as Category | null;
+}
+
 function slugify(input: string) {
   return input
     .toString()

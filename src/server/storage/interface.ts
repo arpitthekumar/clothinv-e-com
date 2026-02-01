@@ -26,6 +26,7 @@ export interface IStorage {
   getCategories(): Promise<Category[]>;
   /** Categories visible on store (visibility=online, approval_status=approved) */
   getCategoriesForStore(storeId?: string): Promise<Category[]>;
+  getCategory(id: string): Promise<Category | null>;
   createCategory(category: InsertCategory): Promise<Category>;
   updateCategory(
     id: string,
@@ -41,7 +42,7 @@ export interface IStorage {
   /** Products visible on e-commerce store (visibility online or both, not deleted).
    * Optional filters: categorySlug, minPrice, maxPrice (all strings because they come from query params).
    */
-  getProductsForStore(storeId?: string, filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string }): Promise<Product[]>;
+  getProductsForStore(storeId?: string, filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string } , options?: { includeDeleted?: boolean; includeOffline?: boolean }): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(
     id: string,

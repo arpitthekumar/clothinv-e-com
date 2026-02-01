@@ -8,7 +8,22 @@ export async function GET() {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
   const categories = await storage.getCategories();
-  return NextResponse.json(categories);
+
+  // Super admin sees everything; store admins/employees see approved online categories + their store's categories
+  if (auth.user.role === "super_admin") {
+    return NextResponse.json(categories);
+  }
+
+  const filtered = (categories ?? []).filter((c: any) => {
+    const approval = c.approval_status ?? c.approvalStatus ?? "approved";
+    const visibility = c.visibility;
+    const storeId = c.store_id ?? c.storeId ?? null;
+    const isOnlineVisible = visibility === "online" && approval === "approved";
+    const isOwnStore = storeId && storeId === auth.user.storeId;
+    return isOnlineVisible || isOwnStore;
+  });
+
+  return NextResponse.json(filtered);
 }
 
 export async function POST(req: NextRequest) {
@@ -21,7 +36,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const data = insertCategorySchema.parse(body);
+    const data = insertCategorySchema.parse(body as any);
+
+    // Enforce store-scoping and approval workflow for non-super_admins
+    if (auth.user.role !== "super_admin") {
+      // Force created category to belong to the user's store
+      (data as any).storeId = auth.user.storeId ?? (data as any).storeId ?? null;
+      // If they request online visibility, convert to pending approval and keep visibility offline
+      if ((data as any).visibility === "online") {
+        (data as any).approvalStatus = "pending";
+        (data as any).visibility = "offline";
+      }
+    }
+
     const category = await storage.createCategory(data);
     return NextResponse.json(category, { status: 201 });
   } catch (err: any) {
@@ -38,6 +65,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
+  // Only admin/super_admin can delete. Employee cannot delete categories.
   if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
     return NextResponse.json({}, { status: 403 });
   }
@@ -51,6 +79,23 @@ export async function DELETE(req: NextRequest) {
         { error: "Category ID is required" },
         { status: 400 }
       );
+    }
+
+    const existing = await storage.getCategory(categoryId);
+    if (!existing) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+
+    // If the category is a platform-wide/online category only super_admin may delete
+    const visibility = existing.visibility;
+    const storeId = (existing as any).store_id ?? existing.storeId ?? null;
+    if (visibility === "online" && auth.user.role !== "super_admin") {
+      return NextResponse.json({ error: "Only Super Admin may delete platform-wide online categories" }, { status: 403 });
+    }
+
+    // If it's a store-owned category, ensure the requester belongs to that store (unless super admin)
+    if (storeId && auth.user.role !== "super_admin" && storeId !== auth.user.storeId) {
+      return NextResponse.json({ error: "You may only delete categories belonging to your store" }, { status: 403 });
     }
 
     // Check if any products are using this category
@@ -84,7 +129,8 @@ export async function DELETE(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+  // Allow admin, employee and super_admin to attempt updates; fine-grained checks below
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin" && auth.user.role !== "employee") {
     return NextResponse.json({}, { status: 403 });
   }
 
@@ -99,7 +145,33 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const data = insertCategorySchema.partial().parse(rest);
+    // Ensure category exists and enforce per-category rules
+    const existing = await storage.getCategory(id);
+    if (!existing) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+
+    const visibilityExisting = existing.visibility;
+    const storeIdExisting = (existing as any).store_id ?? existing.storeId ?? null;
+
+    // If the category is online, only super_admin can edit it
+    if (visibilityExisting === "online" && auth.user.role !== "super_admin") {
+      return NextResponse.json({ error: "Only Super Admin may edit online categories" }, { status: 403 });
+    }
+
+    // If it's store-owned, only staff/admin of that store (admin or employee) may edit
+    if (storeIdExisting && auth.user.role !== "super_admin" && storeIdExisting !== auth.user.storeId) {
+      return NextResponse.json({ error: "You may only edit categories belonging to your store" }, { status: 403 });
+    }
+
+    const data = insertCategorySchema.partial().parse(rest as any);
+
+    // If a non-super_admin requests visibility=online, convert to a pending approval request instead
+    if (auth.user.role !== "super_admin" && (data as any).visibility === "online") {
+      (data as any).approvalStatus = "pending";
+      delete (data as any).visibility; // don't flip visibility to online yet
+    }
+
     const updatedCategory = await storage.updateCategory(id, data);
 
     return NextResponse.json(updatedCategory, { status: 200 });

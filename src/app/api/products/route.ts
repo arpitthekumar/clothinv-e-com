@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    products = await storage.getProductsForStore(auth.user.storeId);
+    // Admin should see all products for their store (including offline) when managing inventory
+    products = await storage.getProductsForStore(auth.user.storeId, undefined, { includeDeleted: includeDeleted, includeOffline: true });
   } else {
     products = await storage.getProducts(includeDeleted);
   }

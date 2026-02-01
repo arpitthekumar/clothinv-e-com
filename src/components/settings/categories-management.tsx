@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Search, Folder, AlertCircle, Edit } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { AddCategoryModal } from "@/components/shared/add-category-modal";
 import {
   AlertDialog,
@@ -31,6 +32,7 @@ export function CategoriesManagement() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editCategory, setEditCategory] = useState<any>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: categories = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/categories"],
@@ -122,13 +124,16 @@ export function CategoriesManagement() {
             className="pl-10"
           />
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
+        <Button
+          onClick={() => setShowAddModal(true)}
+          disabled={!user || (user.role !== "admin" && user.role !== "super_admin")}
+          title={!user || (user.role !== "admin" && user.role !== "super_admin") ? "Only admins can add categories" : undefined}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Category
         </Button>
       </div>
 
-      {/* Categories List */}
       {filteredCategories.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {searchTerm
@@ -139,7 +144,19 @@ export function CategoriesManagement() {
         <div className="space-y-2">
           {filteredCategories.map((category) => {
             const productCount = getProductCount(category.id);
-            const canDelete = productCount === 0;
+
+            // Normalize fields that may come back snake_case or camelCase
+            const approval = category.approval_status ?? category.approvalStatus ?? "approved";
+            const visibility = category.visibility ?? "offline";
+            const storeId = category.store_id ?? category.storeId ?? null;
+
+            const isOnline = visibility === "online" && approval === "approved";
+            const isPending = approval === "pending";
+
+            // Permissions: super_admin can do everything. Store admin/employee can edit store-owned categories (not platform online ones).
+            const canEdit = !!user && (user.role === "super_admin" || ((storeId && storeId === user.storeId) && (user.role === "admin" || user.role === "employee")) ) && !(isOnline && user.role !== "super_admin");
+
+            const canDelete = productCount === 0 && !!user && (user.role === "super_admin" || (user.role === "admin" && storeId && storeId === user.storeId));
 
             return (
               <Card
@@ -153,18 +170,33 @@ export function CategoriesManagement() {
                     <div className="flex items-center gap-3">
                       <Folder className="h-5 w-5 text-primary" />
                       <div>
-                        <h3 className="font-semibold ">{category.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold ">{category.name}</h3>
+                          {isPending ? (
+                            <Badge variant="outline" className="text-xs">
+                              Pending
+                            </Badge>
+                          ) : isOnline ? (
+                            <Badge variant="secondary" className="text-xs">
+                              Online
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">
+                              Offline
+                            </Badge>
+                          )}
+                        </div>
                         {category.description && (
                           <p className="text-sm text-muted-foreground">
                             {category.description}
                           </p>
                         )}
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={canDelete ? "secondary" : "outline"}>
-                            {productCount}{" "}
+                          <Badge variant={productCount === 0 ? "secondary" : "outline"}>
+                            {productCount} {" "}
                             {productCount === 1 ? "product" : "products"}
                           </Badge>
-                          {!canDelete && (
+                          {productCount > 0 && (
                             <Badge variant="destructive" className="text-xs">
                               <AlertCircle className="h-3 w-3 mr-1" />
                               In use
@@ -181,6 +213,8 @@ export function CategoriesManagement() {
                           setEditCategory(category);
                           setEditModalOpen(true);
                         }}
+                        disabled={!canEdit}
+                        title={!canEdit ? "You cannot edit this category" : undefined}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -188,9 +222,8 @@ export function CategoriesManagement() {
                         variant="destructive"
                         size="sm"
                         onClick={() => handleDeleteClick(category)}
-                        disabled={
-                          !canDelete || deleteCategoryMutation.isPending
-                        }
+                        disabled={!canDelete || deleteCategoryMutation.isPending}
+                        title={!canDelete ? "You cannot delete this category" : undefined}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

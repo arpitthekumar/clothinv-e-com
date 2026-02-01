@@ -171,7 +171,7 @@ export function InventoryRow({
             {category?.name || "Uncategorized"}
           </Badge>
         </td>
-<td className="p-2 sm:p-4">
+        <td className="p-2 sm:p-4">
           <div className="flex gap-1 sm:gap-2 flex-wrap md:flex-nowrap">
             {showTrash ? (
               <>
@@ -285,22 +285,21 @@ export function InventoryRow({
           <span
             className={`
       inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
-      ${
-        getStockStatus(product.stock, product.minStock ?? undefined).label ===
-        "In Stock"
-          ? "bg-green-100 text-green-700"
-          : getStockStatus(product.stock, product.minStock ?? undefined)
-              .label === "Low Stock"
-          ? "bg-yellow-100 text-yellow-700"
-          : "bg-red-100 text-red-700"
-      }
+      ${getStockStatus(product.stock, product.minStock ?? undefined).label ===
+                "In Stock"
+                ? "bg-green-100 text-green-700"
+                : getStockStatus(product.stock, product.minStock ?? undefined)
+                  .label === "Low Stock"
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-red-100 text-red-700"
+              }
     `}
           >
             {getStockStatus(product.stock, product.minStock ?? undefined).label}
           </span>
         </td>
 
-        
+
       </tr>
 
       {/* 🗑️ Move to Trash confirmation */}

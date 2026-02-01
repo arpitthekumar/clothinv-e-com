@@ -30,6 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { z } from "zod";
 import { tailwindColorMap } from "@/lib/colors";
 
@@ -55,6 +56,7 @@ export function EditCategoryModal({
   category,
 }: EditCategoryModalProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const handleClose = () => {
     form.reset();
     onClose();
@@ -71,16 +73,25 @@ export function EditCategoryModal({
     },
   });
 
+  // React-hook-form watch to show inline messages when admin selects online
+  const selectedVisibility = form.watch("visibility");
+
   const onSubmit = async (values: z.infer<typeof schema>) => {
     if (!category) return; // TS safe
 
-    // When merchant sets visibility to "online", request Super Admin approval (pending).
+    // When merchant/admin sets visibility to "online", request Super Admin approval (pending).
     const visibility = values.visibility ?? "offline";
-    const payload = {
+    const payload: any = {
       id: category.id,
       ...values,
       approvalStatus: visibility === "online" ? "pending" : "approved",
     };
+
+    // If a non-super_admin requested online, ensure visibility stays offline until approved
+    if (visibility === "online" && user?.role !== "super_admin") {
+      payload.visibility = "offline";
+    }
+
     const res = await apiRequest("PUT", "/api/categories", payload);
 
     if (!res.ok) {
@@ -94,13 +105,15 @@ export function EditCategoryModal({
     }
 
     toast({
-      title: "Category Updated",
-      description: `"${values.name}" updated successfully.`,
+      title: payload.approvalStatus === "pending" ? "Category update pending" : "Category Updated",
+      description: payload.approvalStatus === "pending"
+        ? `"${values.name}" update submitted for Super Admin approval.`
+        : `"${values.name}" updated successfully.`,
     });
 
     queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
     onClose();
-  };
+  }; 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -117,6 +130,11 @@ export function EditCategoryModal({
             {approvalStatus === "pending" && (
               <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded">
                 Pending approval for online visibility.
+              </p>
+            )}
+            {selectedVisibility === "online" && user?.role !== "super_admin" && (
+              <p className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded">
+                Selecting "Online" will submit a request for Super Admin approval and the category will remain offline until approved.
               </p>
             )}
             {/* Name */}
@@ -169,7 +187,7 @@ export function EditCategoryModal({
                     </FormControl>
                     <SelectContent>
                       {CATEGORY_VISIBILITY.map((v) => (
-                        <SelectItem key={v} value={v}>
+                        <SelectItem key={v} value={v} disabled={v === "online" && user?.role === "employee"}>
                           {v === "online" ? "Online (request approval)" : "Offline (POS only)"}
                         </SelectItem>
                       ))}
