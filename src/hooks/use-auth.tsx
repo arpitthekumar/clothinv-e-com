@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, ReactNode, useContext } from "react";
+import { useRouter } from "next/navigation";
 import {
   useQuery,
   useMutation,
@@ -32,6 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
+
+  const router = useRouter();
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
@@ -73,6 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      // Notify and redirect to home page so the UI doesn't show a blank profile
+      toast({ title: "Signed out", description: "You are now signed out.", variant: "default" });
+      router.replace("/");
     },
     onError: (error: Error) => {
       toast({

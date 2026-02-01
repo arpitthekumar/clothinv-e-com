@@ -11,10 +11,21 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const includeDeleted = url.searchParams.get("includeDeleted") === "true";
 
-  const sales =
-    auth.user.role === "admin"
-      ? await storage.getSales(includeDeleted)
-      : await storage.getSalesByUser(auth.user.id, includeDeleted);
+  // Customer: online order history. Admin/Super Admin: all sales (admin scope limited to their store).
+  let sales;
+  if (auth.user.role === "customer") {
+    sales = await storage.getSalesByCustomer(auth.user.id);
+  } else if (auth.user.role === "admin") {
+    if (!auth.user.storeId) {
+      return NextResponse.json({ error: "Admin account is missing store assignment (storeId)." }, { status: 400 });
+    }
+    const all = await storage.getSales(includeDeleted);
+    sales = (all || []).filter((s: any) => (s.storeId === auth.user.storeId || (s as any).store_id === auth.user.storeId));
+  } else if (auth.user.role === "super_admin") {
+    sales = await storage.getSales(includeDeleted);
+  } else {
+    sales = await storage.getSalesByUser(auth.user.id, includeDeleted);
+  }
 
   return NextResponse.json(sales);
 }
@@ -36,9 +47,10 @@ export async function POST(request: NextRequest) {
       parseFloat(body.discount_value || "0")
     );
 
-    // Prepare sale data
-    const saleData = {
+    // Prepare sale data (POS: order_source = 'pos'; online checkout uses 'online')
+    const saleData: any = {
       user_id: auth.user.id,
+      customer_id: body.customer_id ?? undefined,
       customer_name: body.customer_name || "Walk-in Customer",
       customer_phone: body.customer_phone || "N/A",
       items: saleItems,
@@ -51,7 +63,28 @@ export async function POST(request: NextRequest) {
       discount_amount: totals.discountAmount.toFixed(2),
       total_amount: totals.total.toFixed(2),
       payment_method: body.payment_method || "cash",
+      order_source: body.order_source || "pos",
     };
+
+    // If admin (merchant) is creating a POS sale, attach their store id so sales are store-scoped
+    if (auth.user.storeId) {
+      saleData.storeId = auth.user.storeId;
+    } else {
+      // Attempt to derive store id from items (useful if session missing storeId)
+      let inferredStore: string | null = null;
+      for (const it of Array.isArray(saleData.items) ? saleData.items : JSON.parse(saleData.items)) {
+        const product = await storage.getProduct(it.productId);
+        if (!product) continue;
+        const pidStore = (product as any).storeId || (product as any).store_id || null;
+        if (!inferredStore) inferredStore = pidStore;
+        if (inferredStore !== pidStore) {
+          // mixed-store sale: do not attach a store
+          inferredStore = null;
+          break;
+        }
+      }
+      if (inferredStore) saleData.storeId = inferredStore as any;
+    }
 
     // Validate schema
     const data = insertSaleSchema.parse(saleData);

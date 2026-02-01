@@ -35,14 +35,23 @@ export default function AdminUsersPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Gate on client; server gate should be added if needed later
-    if (user && user.role !== "admin") {
+    if (user && user.role !== "admin" && user.role !== "super_admin") {
       window.location.href = "/";
     }
   }, [user]);
 
   const usersQuery = useQuery({
     queryKey: ["/api/admin/users"],
+  });
+
+  const storesQuery = useQuery({
+    queryKey: ["/api/superadmin/stores"],
+    queryFn: async () => {
+      if (user?.role !== "super_admin") return [] as any;
+      const res = await fetch("/api/superadmin/stores");
+      if (!res.ok) throw new Error("Failed to fetch stores");
+      return (await res.json()) as Array<{ id: string; name: string }>;
+    },
   });
 
   const totalUsers = useMemo(
@@ -66,6 +75,7 @@ export default function AdminUsersPage() {
       fullName: string;
       password: string;
       role: string;
+      storeId?: string | null;
     }) => {
       await apiRequest("POST", "/api/admin/users", payload);
     },
@@ -74,14 +84,21 @@ export default function AdminUsersPage() {
       toast({ title: "User created" });
     },
   });
+
+  // helper map for store id -> name
+  const storeNameMap = (storesQuery.data ?? []).reduce((acc: any, s: any) => {
+    acc[s.id] = s.name;
+    return acc;
+  }, {} as Record<string, string>);
   const isSystemAdmin =
     user?.username === "@admin" || user?.fullName === "System Administrator";
 
-  const newUser = {
+  const newUser: { username: string; fullName: string; password: string; role: string; storeId?: string | null } = {
     username: "",
     fullName: "",
     password: "",
     role: "employee",
+    storeId: null,
   };
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -94,6 +111,7 @@ export default function AdminUsersPage() {
       fullName?: string;
       role?: string;
       password?: string;
+      storeId?: string | null;
     }) => {
       const { id, ...updates } = payload;
       await apiRequest("PUT", `/api/admin/users/${id}`, updates);
@@ -158,8 +176,32 @@ export default function AdminUsersPage() {
                   <SelectContent>
                     <SelectItem value="employee">Employee</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
+                    {user?.role === "super_admin" && (
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+
+                {/* If current user is Super Admin, allow selecting a store for the new user */}
+                {user?.role === "super_admin" && (
+                  <Select
+                    onValueChange={(v) => (newUser.storeId = v)}
+                    defaultValue={newUser.storeId ?? "__platform__"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Assign store (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__platform__">Platform-wide</SelectItem>
+                      {Array.isArray(storesQuery.data) &&
+                        storesQuery.data.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <div className="md:col-span-5 flex justify-end">
                   <Button
                     onClick={() => {
@@ -192,6 +234,27 @@ export default function AdminUsersPage() {
                         return;
                       }
 
+                      // if user is admin, ensure storeId is set to their store (server also enforces this)
+                      if (user?.role === "admin") {
+                        (newUser as any).storeId = user.storeId;
+                      }
+
+                      // normalize sentinel/empty string to null (platform-wide)
+                      if ((newUser as any).storeId === "" || (newUser as any).storeId === "__platform__") (newUser as any).storeId = null;
+
+                      // Enforce: employee/admin must always have a storeId
+                      if (
+                        (newUser.role === "employee" || newUser.role === "admin") &&
+                        !(newUser as any).storeId
+                      ) {
+                        toast({
+                          title: "Store is required",
+                          description: "Employees/Admins must be assigned to a store.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
                       // if all good, proceed
                       addMutation.mutate(newUser);
                     }}
@@ -202,10 +265,11 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="divide-y rounded-md border overflow-hidden">
-                <div className="grid grid-cols-6 gap-2 bg-muted/50 p-3 text-xs font-medium text-muted-foreground">
+                <div className="grid grid-cols-7 gap-2 bg-muted/50 p-3 text-xs font-medium text-muted-foreground">
                   <div className="col-span-2">Name</div>
                   <div>Username</div>
                   <div>Role</div>
+                  <div>Store</div>
                   <div>Created</div>
                   <div className="text-right">Actions</div>
                 </div>
@@ -215,7 +279,7 @@ export default function AdminUsersPage() {
                     usersQuery.data.map((u: any) => (
                       <div
                         key={u.id}
-                        className="grid grid-cols-6 gap-2 items-center p-3"
+                        className="grid grid-cols-7 gap-2 items-center p-3"
                       >
                         <div className="col-span-2 font-medium">
                           {u.fullName}
@@ -231,6 +295,9 @@ export default function AdminUsersPage() {
                           >
                             {u.role}
                           </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {u.storeName ?? (u.storeId ? storeNameMap[u.storeId] ?? u.storeId : "-")}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {u.createdAt
@@ -325,6 +392,9 @@ export default function AdminUsersPage() {
                         <SelectContent>
                           <SelectItem value="employee">Employee</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
+                          {user?.role === "super_admin" && (
+                            <SelectItem value="super_admin">Super Admin</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -341,6 +411,32 @@ export default function AdminUsersPage() {
                       />
                     </div>
                   </div>
+
+                  {/* Super Admin may change user's store assignment */}
+                  {user?.role === "super_admin" && (
+                    <div>
+                      <Label>Store (optional)</Label>
+                      <Select
+                        onValueChange={(v) =>
+                          setEditingUser({ ...editingUser, storeId: v === "__platform__" ? null : v })
+                        }
+                        defaultValue={editingUser.storeId ?? "__platform__"}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Assign store (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__platform__">Platform-wide</SelectItem>
+                          {Array.isArray(storesQuery.data) &&
+                            storesQuery.data.map((s: any) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
@@ -350,13 +446,29 @@ export default function AdminUsersPage() {
                     </Button>
                     <Button
                       onClick={() =>
-                        editMutation.mutate({
-                          id: editingUser.id,
-                          username: editingUser.username,
-                          fullName: editingUser.fullName,
-                          role: editingUser.role,
-                          password: editingUser.password,
-                        })
+                        (() => {
+                          const nextRole = editingUser.role;
+                          const nextStoreId = (editingUser as any).storeId;
+                          if (
+                            (nextRole === "employee" || nextRole === "admin") &&
+                            !nextStoreId
+                          ) {
+                            toast({
+                              title: "Store is required",
+                              description: "Employees/Admins must be assigned to a store.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          editMutation.mutate({
+                            id: editingUser.id,
+                            username: editingUser.username,
+                            fullName: editingUser.fullName,
+                            role: editingUser.role,
+                            password: editingUser.password,
+                            storeId: (editingUser as any).storeId,
+                          });
+                        })()
                       }
                     >
                       Save

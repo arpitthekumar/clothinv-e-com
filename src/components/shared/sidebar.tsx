@@ -15,6 +15,8 @@ import {
   RotateCcw,
   ScanBarcode,
   Receipt,
+  ShieldCheck,
+  FolderClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -65,26 +67,42 @@ export function Sidebar({ isOpen }: SidebarProps) {
     };
   }, []);
 
-  const adminMenuItems = [
-    { href: "/", icon: BarChart3, label: "Dashboard" },
+  // Super Admin: platform owner — no POS/inventory edit; oversight + permanent delete only.
+  const superAdminMenuItems = [
+    { href: "/superadmin", icon: BarChart3, label: "Super Admin Dashboard" },
+    { href: "/admin/merchant-requests", icon: ShieldCheck, label: "Merchant Requests" },
+    { href: "/admin/category-requests", icon: FolderClock, label: "Category Requests" },
+    { href: "/superadmin/stores", icon: Package, label: "Store Oversight" },
     { href: "/admin/users", icon: Users, label: "Users" },
-    { href: "/inventory", icon: Package, label: "Inventory" },
-    { href: "/sales", icon: Receipt, label: "Sales Management" },
-    { href: "/reports", icon: FileBarChart, label: "Reports" },
-    { href: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  const adminMenuItems = [
+    { href: "/admin", icon: BarChart3, label: "Dashboard" },
+    { href: "/admin/users", icon: Users, label: "Users" },
+    { href: "/admin/inventory", icon: Package, label: "Inventory" },
+    { href: "/admin/sales", icon: Receipt, label: "Sales Management" },
+    { href: "/admin/reports", icon: FileBarChart, label: "Reports" },
+    { href: "/admin/settings", icon: Settings, label: "Settings" },
+    { href: "/admin/orders", icon: Search, label: "Orders" },
   ];
 
   const employeeMenuItems = [
     { href: "/", icon: BarChart3, label: "Dashboard" },
-    { href: "/inventory", icon: Package, label: "Inventory" },
-    { href: "/sales", icon: Receipt, label: "Sales Management" },
+    { href: "/admin/inventory", icon: Package, label: "Inventory" },
+    { href: "/admin/sales", icon: Receipt, label: "Sales Management" },
   ];
 
   const commonMenuItems = [
-    { href: "/pos", icon: ScanBarcode, label: "Point of Sale" },
+    { href: "/store", icon: Store, label: "Shop" },
+    ...(user?.role !== "super_admin" ? [{ href: "/admin/pos", icon: ScanBarcode, label: "Point of Sale" }] : []),
   ];
 
-  const menuItems = user?.role === "admin" ? adminMenuItems : employeeMenuItems;
+  const menuItems =
+    user?.role === "super_admin"
+      ? superAdminMenuItems
+      : user?.role === "admin"
+        ? adminMenuItems
+        : employeeMenuItems;
 
   return (
     <div
@@ -152,15 +170,17 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 Last sync: {connectionStatus.lastSync}
               </div>
               <p
-                className={`text-xs capitalize ${
-                  user?.role === "admin"
+                className={`text-xs ${
+                  user?.role === "super_admin"
+                    ? "text-amber-400"
+                    : user?.role === "admin"
                     ? "text-orange-300"
                     : user?.role === "employee"
                     ? "text-blue-500"
                     : "text-muted-foreground"
                 }`}
               >
-                {user?.role}
+                {user?.role === "super_admin" ? "Super Admin" : (user?.role ?? "").replace("_", " ")}
               </p>
             </div>
           </div>
@@ -172,7 +192,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
             {/* Role-specific Menu Items */}
             <div>
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                {user?.role === "admin" ? "Admin" : "Employee"}
+                {user?.role === "super_admin" ? "Super Admin" : user?.role === "admin" ? "Admin" : "Employee"}
               </div>
               {menuItems.map((item) => (
                 <Link key={item.href} href={item.href}>

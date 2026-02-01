@@ -1,9 +1,15 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export function ProtectedRoute({ component: Component }: { component: () => React.JSX.Element }) {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !user) router.replace("/auth");
+  }, [isLoading, user, router]);
 
   if (isLoading) {
     return (
@@ -13,9 +19,7 @@ export function ProtectedRoute({ component: Component }: { component: () => Reac
     );
   }
 
-  if (!user) {
-    redirect("/auth");
-  }
+  if (!user) return null;
 
   return <Component />
 }

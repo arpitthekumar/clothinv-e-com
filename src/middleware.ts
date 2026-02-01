@@ -15,7 +15,8 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/inventory", "/pos", "/reports", "/scan", "/settings", "/admin/:path*"],
+  // Do not protect the public home page ("/") so unauthenticated visitors can browse the site.
+  matcher: ["/inventory", "/pos", "/reports", "/scan", "/settings", "/admin/:path*"],
 };
 
 

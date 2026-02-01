@@ -20,6 +20,8 @@ interface InventoryHeaderProps {
   showTrash: boolean;
   setShowTrash: (val: boolean) => void;
   setShowAddModal: (val: boolean) => void;
+  /** When false (e.g. employee), Add Product button is hidden. */
+  canAddProduct?: boolean;
 }
 
 export function InventoryHeader({
@@ -31,6 +33,7 @@ export function InventoryHeader({
   showTrash,
   setShowTrash,
   setShowAddModal,
+  canAddProduct = true,
 }: InventoryHeaderProps) {
   return (
     <div className="space-y-6">
@@ -80,8 +83,8 @@ export function InventoryHeader({
           {showTrash ? "Active Products" : "Trash"}
         </Button>
 
-        {/* Add Product */}
-        {!showTrash && (
+        {/* Add Product — admin/super_admin only; employee has no access */}
+        {!showTrash && canAddProduct && (
           <Button
             onClick={() => setShowAddModal(true)}
             className="w-full sm:w-auto"

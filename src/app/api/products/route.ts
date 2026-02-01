@@ -11,7 +11,20 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const includeDeleted = url.searchParams.get("includeDeleted") === "true";
 
-  const products = await storage.getProducts(includeDeleted);
+  // Scope: admin/employee should only see their store's products.
+  // Super Admin can see all products.
+  let products: any[] = [];
+  if (auth.user.role === "admin" || auth.user.role === "employee") {
+    if (!auth.user.storeId) {
+      return NextResponse.json(
+        { error: "Your account is missing store assignment (storeId)." },
+        { status: 400 }
+      );
+    }
+    products = await storage.getProductsForStore(auth.user.storeId);
+  } else {
+    products = await storage.getProducts(includeDeleted);
+  }
   const mappedProducts = (products || []).map(mapProductFromDb);
   return NextResponse.json(mappedProducts);
 }
@@ -19,7 +32,16 @@ export async function GET(request: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  // Employee: no product creation. Admin/Super Admin only.
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return NextResponse.json({}, { status: 403 });
+  }
+  if (auth.user.role === "admin" && !auth.user.storeId) {
+    return NextResponse.json(
+      { error: "Admin account is missing store assignment (storeId)." },
+      { status: 400 }
+    );
+  }
 
   try {
     const body = await req.json();
@@ -39,8 +61,24 @@ export async function POST(req: NextRequest) {
     
     const data = insertProductSchema.parse(body);
 
+    // If image is a base64 payload, compress & upload to storage and replace with short path
+    if (data.image && typeof data.image === "string" && data.image.startsWith("data:")) {
+      try {
+        const path = await storage.uploadImage(data.image, auth.user.storeId ?? null);
+        data.image = path; // store short path in DB
+      } catch (err: any) {
+        console.error("Image upload failed:", err);
+        const details = err?.message ?? JSON.stringify(err);
+        return NextResponse.json({ error: "Failed to upload image", details }, { status: 400 });
+      }
+    }
+
     // Map all fields to database column names
-    const dbData = mapProductToDb(data);
+    const dbData = mapProductToDb({
+      ...data,
+      // Admin products are always scoped to their store.
+      ...(auth.user.role === "admin" ? { storeId: auth.user.storeId } : {}),
+    });
 
     // Check if barcode is unique if provided
     if (dbData.barcode) {

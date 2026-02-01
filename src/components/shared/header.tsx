@@ -63,7 +63,7 @@ export function Header({ title, subtitle, onSidebarToggle }: HeaderProps) {
         <div className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-wrap justify-end">
           {/* Quick Sale */}
           <div className="hidden lg:block">
-            <Link href="/pos">
+            <Link href="/admin/pos">
               <Button size="sm" className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Quick Sale

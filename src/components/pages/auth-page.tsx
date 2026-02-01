@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertUserSchema } from "@shared/schema";
-import { redirect } from "next/navigation";
 import { Store, Shield, Users, BarChart3 } from "lucide-react";
 import { z } from "zod";
+import Link from "next/link";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -19,7 +20,10 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function AuthPage() {
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl") ?? "";
   const { user, loginMutation } = useAuth();
+  const router = useRouter();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -29,14 +33,32 @@ export default function AuthPage() {
     },
   });
 
-
-  if (user) {
-    if (user.role === "admin") {
-      redirect("/");
-    } else {
-      redirect("/pos");
+  useEffect(() => {
+    if (!user) return;
+    // Honor returnUrl when appropriate for role: store routes for customers, admin routes for admins
+    if (returnUrl) {
+      if (returnUrl.startsWith("/store") && user.role === "customer") {
+        router.replace(returnUrl);
+        return;
+      }
+      if (returnUrl.startsWith("/admin") && (user.role === "admin" || user.role === "super_admin")) {
+        router.replace(returnUrl);
+        return;
+      }
     }
-  }
+
+    if (user.role === "super_admin" || user.role === "admin") {
+      router.replace("/superadmin");
+      return;
+    }
+
+    if (user.role === "customer") {
+      router.replace("/store");
+      return;
+    }
+
+    router.replace("/pos");
+  }, [user, returnUrl, router]);
 
   const onLoginSubmit = (data: LoginFormValues) => {
     loginMutation.mutate(data);
@@ -75,9 +97,9 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Username</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Enter your username" 
-                              {...field} 
+                            <Input
+                              placeholder="Enter your username"
+                              {...field}
                               data-testid="input-login-username"
                             />
                           </FormControl>
@@ -93,10 +115,10 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="password" 
-                              placeholder="Enter your password" 
-                              {...field} 
+                            <Input
+                              type="password"
+                              placeholder="Enter your password"
+                              {...field}
                               data-testid="input-login-password"
                             />
                           </FormControl>
@@ -105,9 +127,9 @@ export default function AuthPage() {
                       )}
                     />
 
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
+                    <Button
+                      type="submit"
+                      className="w-full"
                       disabled={loginMutation.isPending}
                       data-testid="button-login-submit"
                     >
@@ -115,6 +137,14 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
+                <div className="flex items-center justify-between mt-2">
+                  <Link href="/register" className="text-sm text-primary hover:underline">
+                    Don't have an account? Register
+                  </Link>
+                  <Link href="/" className="text-sm text-primary hover:underline  block">
+                    Continue to Store
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ) : null}
@@ -126,10 +156,10 @@ export default function AuthPage() {
         <div className="max-w-md text-center">
           <h2 className="text-4xl font-bold mb-6">Modern Inventory Management</h2>
           <p className="text-lg text-primary-foreground/90 mb-8">
-            Streamline your clothing shop operations with offline-first inventory tracking, 
+            Streamline your clothing shop operations with offline-first inventory tracking,
             fast billing, and powerful analytics.
           </p>
-          
+
           <div className="space-y-4">
             <div className="flex items-center text-left">
               <div className="w-12 h-12 bg-primary-foreground/20 rounded-lg flex items-center justify-center mr-4">

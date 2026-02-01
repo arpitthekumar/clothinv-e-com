@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/shared/sidebar";
 import { Header } from "@/components/shared/header";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
@@ -11,7 +12,19 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Customers use the store; Super Admin uses their own dashboard.
+  useEffect(() => {
+    if (!isLoading && user?.role === "customer") {
+      router.replace("/store");
+    }
+    if (!isLoading && user?.role === "super_admin") {
+      router.replace("/superadmin");
+    }
+  }, [user?.role, isLoading, router]);
+
   useEffect(() => {
     const isMobile = window.innerWidth < 768; // md breakpoint
     if (isMobile) {
@@ -28,7 +41,7 @@ export default function Dashboard() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
-          title={`${user?.role === "admin" ? "Admin" : "Employee"} Dashboard`}
+          title={`${user?.role === "super_admin" ? "Super Admin" : user?.role === "admin" ? "Admin" : "Employee"} Dashboard`}
           subtitle={`Welcome back, ${user?.fullName || user?.username}!`}
           onSidebarToggle={toggleSidebar}
         />

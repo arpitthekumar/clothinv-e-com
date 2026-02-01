@@ -14,24 +14,33 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  // Employee: no category creation. Admin/Super Admin only.
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return NextResponse.json({}, { status: 403 });
+  }
 
   try {
-    const data = insertCategorySchema.parse(await req.json());
+    const body = await req.json();
+    const data = insertCategorySchema.parse(body);
     const category = await storage.createCategory(data);
     return NextResponse.json(category, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid category data" },
-      { status: 400 }
-    );
+  } catch (err: any) {
+    // If this is a Zod validation error, surface detailed issues
+    if (err?.issues) {
+      return NextResponse.json({ error: "Invalid category data", details: err.issues }, { status: 400 });
+    }
+
+    // If it's a DB error, return its message to help debugging
+    return NextResponse.json({ error: err?.message ?? "Invalid category data" }, { status: 400 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return NextResponse.json({}, { status: 403 });
+  }
 
   try {
     const { searchParams } = new URL(req.url);
@@ -75,7 +84,9 @@ export async function DELETE(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") return NextResponse.json({}, { status: 403 });
+  if (auth.user.role !== "admin" && auth.user.role !== "super_admin") {
+    return NextResponse.json({}, { status: 403 });
+  }
 
   try {
     const body = await req.json();

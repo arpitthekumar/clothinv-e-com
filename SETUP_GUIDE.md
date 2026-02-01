@@ -66,6 +66,12 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 # ==================== NEXT.JS ====================
 NODE_ENV=development
 
+# ==================== SESSIONS (server only) ====
+# Strong random secret used by iron-session. Required for server sessions.
+SESSION_SECRET=your_strong_random_secret_here
+# Session lifetime in seconds (default 20 days):
+SESSION_MAX_AGE=1728000
+
 # ==================== OPTIONAL ====================
 # RAZORPAY_KEY_ID=your_key_here (for payments)
 # RAZORPAY_KEY_SECRET=your_secret_here
@@ -126,7 +132,7 @@ The system uses **20 main tables**:
 | `users` | Employee/admin accounts |
 | `categories` | Product categories |
 | `products` | Inventory items |
-| `customers` | Customer information |
+| `customers` | Customer information (POS offline customers; optional link to `users` via `user_id` for registered customers) |
 
 ### Sales & Orders
 | Table | Purpose |
@@ -206,6 +212,8 @@ Once the app is running:
 - Create a test user in the app
 - Check Supabase → **Table Editor** → `users` table
 - Make sure your new user appears there
+
+> Note: Registration now creates a linked customer profile in the `customers` table (nullable `user_id`). If your `customers` table does not contain a `user_id` column, re-run `SETUP_DATABASE.sql` in the SQL editor or apply the migration to add `user_id` as a nullable foreign key to `users(id)`.
 
 ### Issue: Can't connect to Supabase
 **Solution:**

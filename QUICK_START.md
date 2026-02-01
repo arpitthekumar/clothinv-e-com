@@ -83,6 +83,17 @@ npm run lint
 - **Changes:** See [CLEANUP_SUMMARY.md](CLEANUP_SUMMARY.md)
 - **Schema:** Check `shared/schema.ts`
 
+## 🔁 Migration helper (images)
+
+A helper API route is included to migrate existing product base64 images to Supabase Storage. This route is protected — set `MIGRATE_IMAGES_SECRET` in your server environment and call it with the same value via the `x-migrate-secret` header or `?secret=` query param.
+
+POST /api/debug/migrate-images
+- Body (JSON): `{ "dryRun": true }` to preview without making changes, or omit `dryRun` to perform the migration.
+- Optional: `{ "batchSize": 50 }` to control per-request batching.
+
+**Requirements:**
+- `SUPABASE_SERVICE_ROLE_KEY` must be set in the server env (used to create buckets and upload objects).
+
 ## 🎯 That's It!
 
 Everything you need is in:

@@ -1,8 +1,7 @@
 /**
  * Maps frontend camelCase field names to database column names.
- * Your Supabase table currently stores most columns in camelCase and
- * only a few in snake_case (e.g. buying_price, deleted_at). This helper
- * ensures we send the right field names without requiring DB changes.
+ * Supabase/Postgres tables use snake_case. This helper converts between
+ * the app's camelCase model and DB column names.
  */
 
 export function mapProductToDb(product: any): any {
@@ -10,39 +9,41 @@ export function mapProductToDb(product: any): any {
     return product;
   }
 
-  const dbProduct: any = {};
-  
-  // Fields that already match the column names in Supabase (camelCase is fine)
-  const directFields = [
-    'id',
-    'name',
-    'sku',
-    'categoryId',
-    'description',
-    'price',
-    'size',
-    'stock',
-    'minStock',
-    'barcode',
-    'createdAt',
-    'updatedAt',
-    'deleted',
-    'deleted_at',
-  ];
-  for (const field of directFields) {
-    if (field in product && product[field] !== undefined) {
-      dbProduct[field] = product[field];
-    }
+  const db: any = {};
+
+  // Direct passthrough (already snake_case or same name)
+  for (const key of [
+    "id",
+    "name",
+    "slug",
+    "sku",
+    "description",
+    "price",
+    "size",
+    "stock",
+    "barcode",
+    "image",
+    "visibility",
+    "deleted",
+  ]) {
+    if (product[key] !== undefined) db[key] = product[key];
   }
 
-  if ('buyingPrice' in product) {
-    const val = product.buyingPrice;
-    if (val !== undefined && val !== null && val !== '') {
-      dbProduct['buying_price'] = val;
-    }
+  // camelCase -> snake_case
+  if (product.storeId !== undefined) db.store_id = product.storeId;
+  if (product.categoryId !== undefined) db.category_id = product.categoryId;
+  if (product.minStock !== undefined) db.min_stock = product.minStock;
+
+  if (product.buyingPrice !== undefined && product.buyingPrice !== null && product.buyingPrice !== "") {
+    db.buying_price = product.buyingPrice;
   }
 
-  return dbProduct;
+  // timestamps
+  if (product.createdAt !== undefined) db.created_at = product.createdAt;
+  if (product.updatedAt !== undefined) db.updated_at = product.updatedAt;
+  if (product.deletedAt !== undefined) db.deleted_at = product.deletedAt;
+
+  return db;
 }
 
 export function mapProductFromDb(product: any): any {
@@ -51,6 +52,11 @@ export function mapProductFromDb(product: any): any {
   }
 
   const mapped: any = { ...product };
+
+  if ('store_id' in mapped && mapped.store_id !== undefined) {
+    mapped.storeId = mapped.store_id;
+    delete mapped.store_id;
+  }
 
   if ('category_id' in mapped && mapped.category_id !== undefined) {
     mapped.categoryId = mapped.category_id;

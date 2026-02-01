@@ -9,9 +9,10 @@ export async function DELETE(
   // Check authentication
   const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({}, { status: 401 });
-  if (auth.user.role !== "admin") {
+  // Only Super Admin can permanently delete (platform control; Admin cannot).
+  if (auth.user.role !== "super_admin") {
     return NextResponse.json(
-      { error: "Only admins can permanently delete sales" },
+      { error: "Only Super Admin can permanently delete sales" },
       { status: 403 }
     );
   }

@@ -42,7 +42,8 @@ export default function SalesPage() {
   const [searchBy, setSearchBy] = useState("all");
 
   const { user } = useAuth();
-  const isSystemAdmin = user?.role === "admin";
+  // Only Super Admin can permanent delete (platform control; Admin cannot).
+  const isSystemAdmin = user?.role === "super_admin";
   useEffect(() => {
     const isMobile = window.innerWidth < 768; // md breakpoint
     if (isMobile) {
