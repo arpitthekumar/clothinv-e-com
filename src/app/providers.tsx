@@ -7,24 +7,27 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/toaster";
 import { NetworkStatusListener } from "@/components/shared/network-status-listener";
+import { CartProvider } from "@/components/store/cart-context";
 
 export default function Providers({ children }: { children: ReactNode }) {
   // Online-only mode: disable service worker registration and background sync; also unregister any existing SW
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(reg => reg.unregister().catch(() => {}));
-      }).catch(() => {});
+        regs.forEach(reg => reg.unregister().catch(() => { }));
+      }).catch(() => { });
     }
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          {/* NetworkStatusListener retained for UI messaging, but app requires online */}
-          {children}
-        </AuthProvider>
+        <CartProvider>
+          <AuthProvider>
+            <Toaster />
+            {/* NetworkStatusListener retained for UI messaging, but app requires online */}
+            {children}
+          </AuthProvider>
+        </CartProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
