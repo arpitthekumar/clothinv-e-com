@@ -69,6 +69,7 @@ export class SupabaseStorage implements IStorage {
   getCategories = () => categoriesImpl.getCategories(this.client);
   getCategoriesForStore = (storeId?: string) =>
     categoriesImpl.getCategoriesForStore(this.client, storeId);
+  getCategory = (id: string) => categoriesImpl.getCategoryById(this.client, id);
   createCategory = (category: InsertCategory) =>
     categoriesImpl.createCategory(this.client, category);
   updateCategory = (id: string, category: Partial<InsertCategory>) =>
@@ -79,7 +80,7 @@ export class SupabaseStorage implements IStorage {
   // Products
   getProducts = (includeDeleted?: boolean) =>
     productsImpl.getProducts(this.client, includeDeleted);
-  getProductsForStore = (storeId?: string, filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string }) => productsImpl.getProductsForStore(this.client, storeId, filters);
+  getProductsForStore = (storeId?: string, filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string }, options?: { includeDeleted?: boolean; includeOffline?: boolean }) => productsImpl.getProductsForStore(this.client, storeId, filters, options);
   getProduct = (id: string) => productsImpl.getProduct(this.client, id);
   getProductBySku = (sku: string) =>
     productsImpl.getProductBySku(this.client, sku);

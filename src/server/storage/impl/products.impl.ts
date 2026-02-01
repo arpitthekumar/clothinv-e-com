@@ -18,13 +18,17 @@ export async function getProducts(
 export async function getProductsForStore(
   client: SupabaseServerClient,
   storeId?: string,
-  filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string }
+  filters?: { categorySlug?: string; minPrice?: string; maxPrice?: string },
+  options?: { includeDeleted?: boolean; includeOffline?: boolean }
 ): Promise<Product[]> {
-  let q = client
-    .from("products")
-    .select("*")
-    .eq("deleted", false)
-    .or("visibility.eq.online,visibility.eq.both");
+  const includeDeleted = options?.includeDeleted ?? false;
+  const includeOffline = options?.includeOffline ?? false;
+
+  let q = client.from("products").select("*");
+
+  if (!includeDeleted) q = q.eq("deleted", false);
+  if (!includeOffline) q = q.or("visibility.eq.online,visibility.eq.both");
+
   if (storeId) q = q.eq("store_id", storeId);
 
   if (filters?.categorySlug) {
@@ -122,7 +126,8 @@ export async function createProduct(
   const payload: any = {
     ...product,
     visibility: (product as any).visibility ?? "offline",
-    store_id: (product as any).storeId ?? null,
+    // Respect existing snake_case store_id if present, otherwise use camelCase storeId
+    store_id: (product as any).store_id ?? (product as any).storeId ?? null,
   };
 
   // Ensure a slug exists and is unique per store
@@ -147,6 +152,7 @@ export async function updateProduct(
 ): Promise<Product | undefined> {
   const payload: any = { ...product };
   if ((product as any).storeId !== undefined) payload.store_id = (product as any).storeId;
+  if ((product as any).store_id !== undefined) payload.store_id = (product as any).store_id;
 
   // If slug is missing or empty, try to generate one using product name
   if ((!payload.slug || String(payload.slug).trim() === "") && product.name) {

@@ -26,9 +26,12 @@ export async function PATCH(
       );
     }
 
-    const updated = await storage.updateCategory(id, {
-      approvalStatus: approvalStatus as "pending" | "approved" | "rejected",
-    });
+    const patch: any = { approvalStatus: approvalStatus as "pending" | "approved" | "rejected" };
+    // When approving, also flip visibility to online so it becomes visible on stores
+    if (approvalStatus === "approved") {
+      patch.visibility = "online";
+    }
+    const updated = await storage.updateCategory(id, patch);
     if (!updated) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
