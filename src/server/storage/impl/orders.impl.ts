@@ -52,6 +52,69 @@ export async function getOrdersByCustomer(
   return (data ?? []) as Order[];
 }
 
+export async function getOrdersFiltered(
+  client: SupabaseServerClient,
+  params: {
+    storeId?: string | null;
+    userId?: string | null;
+    limit: number;
+    cursor?: string | null;
+    status?: string | null;
+    excludeDelivered?: boolean;
+    start?: string | null;
+    end?: string | null;
+    search?: string | null;
+    searchBy?: string | null;
+  }
+) {
+  const { storeId, userId, limit, cursor, status, excludeDelivered = true, start, end, search, searchBy } = params;
+  let query = client.from("orders").select("*");
+  if (storeId) query = query.eq("store_id", storeId);
+  if (userId) query = query.eq("customer_id", userId);
+  if (status) query = query.eq("status", status);
+  else if (excludeDelivered) query = query.neq("status", "delivered");
+  if (start) query = query.gte("created_at", start);
+  if (end) query = query.lte("created_at", end);
+  if (search && searchBy) {
+    const isNumeric = !isNaN(Number(search));
+    let orParts: string[] = [];
+    switch (searchBy) {
+      case "invoice":
+        orParts.push(`invoice_number.ilike.%${search}%`);
+        break;
+      case "name":
+        orParts.push(`customer_name.ilike.%${search}%`);
+        break;
+      case "phone":
+        orParts.push(`customer_phone.ilike.%${search}%`);
+        break;
+      case "id":
+        orParts.push(`id.eq.${search}`);
+        break;
+      case "all":
+      default:
+        orParts = [
+          `invoice_number.ilike.%${search}%`,
+          `customer_name.ilike.%${search}%`,
+          `customer_phone.ilike.%${search}%`,
+        ];
+        if (isNumeric) orParts.push(`total_amount.eq.${Number(search)}`);
+        break;
+    }
+    if (orParts.length > 0) query = query.or(orParts.join(","));
+  }
+  if (cursor) query = query.lt("created_at", cursor);
+  query = query.order("created_at", { ascending: false }).limit(limit + 1);
+  const { data, error } = await query;
+  if (error) throw error;
+  const hasMore = data.length > limit;
+  const result = hasMore ? data.slice(0, limit) : data;
+  return {
+    data: result,
+    nextCursor: hasMore ? result[result.length - 1].created_at : null,
+  };
+}
+
 export async function createOrder(
   client: SupabaseServerClient,
   order: InsertOrder
@@ -133,6 +196,7 @@ export async function updateOrderStatus(
     // Create a sale record derived from order
     const invoice = `ORD-${Date.now()}`;
     const salePayload: any = {
+      storeId: order.storeId || (order as any).store_id || null,
       store_id: order.storeId || (order as any).store_id || null,
       user_id: processedBy || null,
       customer_id: (order as any).customer_id || null,
@@ -173,10 +237,7 @@ export async function updateOrderStatus(
       } as any);
     }
 
-    // Remove the order after it's been processed into a sale so delivered orders do not linger
-    const { error: delErr } = await client.from("orders").delete().eq("id", id);
-    if (delErr) throw delErr;
-
+    // Keep the order record (do not delete). It remains for payments and auditing. Delivered orders will be hidden by default
     // Return an object indicating moved-to-sale so callers can react accordingly
     return { ...(updatedOrder as any), movedToSaleId: sale.id } as any;
   }
