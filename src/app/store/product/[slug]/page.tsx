@@ -3,11 +3,12 @@ import { SupabaseStorage } from "@/server/storage/storage.service";
 import { mapProductFromDb } from "@/lib/db-column-mapper";
 import ProductDetailClient from "@/components/store/product-detail-client";
 
-export default async function ProductPage({ params }: { params: { slug: string } }) {
+export default async function ProductPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
+  const { slug } = (await params) as { slug: string };
   const storage = new SupabaseStorage();
   // Fetch all visible store products and find by slug or id
   const products = await storage.getProductsForStore(undefined);
-  const p = (products || []).find((x: any) => x.slug === params.slug || x.id === params.slug);
+  const p = (products || []).find((x: any) => x.slug === slug || x.id === slug);
   if (!p) {
     return (
       <div className="min-h-screen flex items-center justify-center">

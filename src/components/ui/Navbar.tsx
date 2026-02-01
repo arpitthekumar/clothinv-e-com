@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Menu, Search, MapPin, ShoppingCart, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { StoreCartDrawer } from "@/components/store/store-cart-drawer";
 
 export function Navbar() {
   const { user } = useAuth();
@@ -69,11 +70,7 @@ export function Navbar() {
             Location
           </span>
 
-          <Link href="/store">
-            <Button variant="ghost" size="icon">
-              <ShoppingCart className="h-4 w-4" />
-            </Button>
-          </Link>
+          <StoreCartDrawer />
 
           {user ? (
             <div className="flex items-center gap-2">

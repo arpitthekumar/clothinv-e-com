@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
     const payment = await storage.createPayment({
-      orderId: order.id,
-      storeId: (order as any).store_id ?? (order as any).storeId ?? null,
+      order_id: order.id,
+      store_id: (order as any).store_id ?? (order as any).storeId ?? null,
       provider: "razorpay",
       order_provider_id: razorpay_order_id,
       payment_id: razorpay_payment_id,

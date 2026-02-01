@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
 
     if (orderId) {
       await storage.createPayment({
-        orderId,
-        storeId: null,
+        order_id: orderId,
+        store_id: null,
         provider: "razorpay",
         order_provider_id,
         payment_id: pid,
