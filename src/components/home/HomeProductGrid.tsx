@@ -20,6 +20,7 @@ type Category = {
 
 type Product = {
   id: string;
+  storeId?: string | null;
   name: string;
   price: string;
   image?: string | null;
@@ -263,6 +264,7 @@ export function HomeProductGrid() {
                                       sku: p.id,
                                       price: p.price,
                                       quantity: 1,
+                                      storeId: p.storeId ?? null,
                                     });
                                   } finally {
                                     setAddingId(null);

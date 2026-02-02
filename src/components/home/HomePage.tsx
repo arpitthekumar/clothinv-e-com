@@ -6,6 +6,7 @@ import { HomeProductGrid } from "./HomeProductGrid";
 import { HomeFooter } from "./HomeFooter";
 import ProcessSection from "./ProcessSection";
 import Cta from "./CtaSection";
+import FAQ from "../shared/faq";
 
 
 export function HomePage() {
@@ -18,8 +19,8 @@ export function HomePage() {
         <div className="mx-auto w-full max-w-7xl px-4 py-8 space-y-10">
           <HomeProductGrid />
           <ProcessSection/>
+          <FAQ/>
           <Cta/>
-          
         </div>
       </main>
 

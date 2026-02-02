@@ -13,37 +13,37 @@ const FAQ = () => {
         {
             question: "How can I track my order?",
             answer:
-                "Once your order is shipped, you’ll receive a tracking link via email and in your account dashboard under Orders.",
+                "Once your order is shipped, you’ll receive a tracking link via email and SMS. You can also track your order anytime from your account dashboard under the Orders section. Real-time updates from the courier will show shipment status, delivery progress, and expected delivery date.",
         },
         {
             question: "What is your return and refund policy?",
             answer:
-                "You can request a return within 7 days of delivery. Refunds are processed after product inspection and credited within 5–7 business days.",
+                "You can request a return within 7 days of delivery if the product meets our return conditions. After the returned item is inspected and approved, the refund is initiated to your original payment method. Refunds usually take 5–7 business days to reflect, depending on your bank or payment provider.",
         },
         {
             question: "How long does shipping take?",
             answer:
-                "Standard shipping usually takes 3–5 business days. Delivery times may vary depending on your location and seller.",
+                "Standard shipping typically takes 3–5 business days after the order is confirmed. Delivery time may vary based on your location, seller processing time, and courier availability. During peak sale periods or holidays, deliveries may take slightly longer.",
         },
         {
             question: "Can I cancel or modify my order?",
             answer:
-                "Orders can be canceled or modified before they are shipped. Once shipped, changes are no longer possible.",
+                "Orders can be canceled or modified only before they are shipped. Once the seller ships the order, cancellation is no longer possible. In such cases, you may place a return request after delivery if the product is eligible under our return policy.",
         },
         {
             question: "How do I become a seller on the platform?",
             answer:
-                "Sign in to your account and choose the “Become a Seller” option. Complete the verification process to start selling.",
+                "To become a seller, sign in to your account and select the “Become a Seller” option. You’ll need to complete identity verification, provide business details, and upload product information. Once approved, you can start listing products and managing orders from your seller dashboard.",
         },
         {
             question: "Are online payments secure?",
             answer:
-                "Yes, all payments are encrypted and processed through secure, PCI-compliant payment gateways.",
+                "Yes, all online payments on our platform are fully secure. We use encrypted connections and PCI-compliant payment gateways to protect your data. Multiple payment options are supported, including cards, UPI, wallets, and net banking, with additional fraud detection in place.",
         },
         {
             question: "Who do I contact for support?",
             answer:
-                "For faster support, sign in and use the Help Center in your account. Logged-in users receive priority assistance.",
+                "For the fastest support, please sign in and use the Help Center available in your account. This allows us to assist you with order-specific issues more efficiently. Logged-in users receive priority support, faster responses, and access to detailed help articles.",
         },
     ]);
 
@@ -54,7 +54,7 @@ const FAQ = () => {
     };
 
     return (
-        <section className="bg-background py-20 px-6 ">
+        <section className="bg-background  px-6 ">
             {/* Header */}
             <div className="flex flex-col items-center text-center pb-12">
 
@@ -123,7 +123,7 @@ const FAQ = () => {
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: "auto" }}
                                     exit={{ opacity: 0, height: 0 }}
-                                    transition={{ duration: 0.3, ease: "easeOut" }}
+                                    transition={{ duration: 0.5, ease: "easeOut" }}
                                 >
                                     {faq.answer}
                                 </motion.p>

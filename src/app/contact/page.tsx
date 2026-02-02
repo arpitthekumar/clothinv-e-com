@@ -89,9 +89,10 @@ export default function ContactPage() {
               Please make sure you are signed in before contacting us.
             </p>
           </div>
-          <FAQ />
           {/* CTA */}
           <div className="mt-20">
+          <FAQ />
+          <span className="block h-16"></span>
             <Cta />
           </div>
         </section>

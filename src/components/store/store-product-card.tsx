@@ -6,6 +6,7 @@ import { useCart } from "./cart-context";
 
 type Product = {
   id: string;
+  storeId?: string | null;
   name: string;
   sku: string;
   price: string;
@@ -68,6 +69,7 @@ export function StoreProductCard({ product }: { product: Product }) {
               sku: product.sku,
               price: product.price,
               quantity: 1,
+              storeId: product.storeId ?? null,
             })
           }
         >

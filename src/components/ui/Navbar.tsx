@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Menu, Search, MapPin, ShoppingCart, User } from "lucide-react";
+import LocationInput from "@/components/ui/LocationInput";
 import { useAuth } from "@/hooks/use-auth";
 import { StoreCartDrawer } from "@/components/store/store-cart-drawer";
 
@@ -198,20 +199,20 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 text-sm">
-          <button
-            onClick={() => {
-              const next = window.prompt("Set your location:", locationName || "") || "";
-              if (next && typeof window !== "undefined") {
-                localStorage.setItem("user_location", next);
-                setLocationName(next);
-              }
-            }}
-            className="hidden sm:inline-flex items-center gap-1 text-muted-foreground cursor-pointer"
-            aria-label="Set location"
-          >
+          <div className="hidden sm:inline-flex items-center gap-1 text-muted-foreground">
             <MapPin className="h-4 w-4" />
-            {locationName || "Location"}
-          </button>
+            <LocationInput compact value={undefined} onChange={(v) => {
+              // Mirror old UX: set a simple short string for quick display
+              const label = v?.addressLine1 || (v?.city && v?.country ? `${v.city}, ${v.country}` : v?.city) || (v?.coords ? `Lat ${v.coords.lat.toFixed(2)}, Lon ${v.coords.lng.toFixed(2)}` : null);
+              if (label && typeof window !== "undefined") {
+                localStorage.setItem("user_location", label);
+                setLocationName(label);
+              } else {
+                localStorage.removeItem("user_location");
+                setLocationName(null);
+              }
+            }} />
+          </div>
 
           <StoreCartDrawer />
 

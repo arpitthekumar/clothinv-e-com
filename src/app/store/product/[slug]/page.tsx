@@ -30,7 +30,22 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (product.storeId) {
     try {
       const storeInfo = await storage.getStoreById(product.storeId);
-      if (storeInfo) product.storeName = storeInfo.name;
+      if (storeInfo) {
+        product.storeName = storeInfo.name;
+        // attach structured store location to product sent to client
+        product.store = {
+          id: storeInfo.id,
+          name: storeInfo.name,
+          addressLine1: storeInfo.address_line1 ?? null,
+          addressLine2: storeInfo.address_line2 ?? null,
+          city: storeInfo.city ?? null,
+          state: storeInfo.state ?? null,
+          postcode: storeInfo.postcode ?? null,
+          country: storeInfo.country ?? null,
+          latitude: storeInfo.latitude ?? null,
+          longitude: storeInfo.longitude ?? null,
+        };
+      }
     } catch (e) {
       // ignore
     }

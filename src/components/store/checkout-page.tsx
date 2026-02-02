@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import LocationInput from "@/components/ui/LocationInput";
 import { useCart } from "./cart-context";
 import { useAuth } from "@/hooks/use-auth";
 
 const DELIVERY_ADDR_KEY = "clothinv-delivery-address";
 const DELIVERY_PHONE_KEY = "clothinv-delivery-phone";
+const LOCATION_FULL_KEY = "user_location_full";
 
 export function CheckoutPage() {
   const router = useRouter();
@@ -18,6 +20,8 @@ export function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [phone, setPhone] = useState<string>("");
   const [deliveryAddress, setDeliveryAddress] = useState<string>("");
+  const [showLocationEditor, setShowLocationEditor] = useState(false);
+  const [savedLocation, setSavedLocation] = useState<any | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -34,6 +38,30 @@ export function CheckoutPage() {
       const a = typeof window !== "undefined" ? localStorage.getItem(DELIVERY_ADDR_KEY) : null;
       if (p) setPhone(p);
       if (a) setDeliveryAddress(a);
+
+      // load structured location if available and pre-fill delivery address if empty
+      if (typeof window !== "undefined") {
+        const raw = localStorage.getItem(LOCATION_FULL_KEY);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            setSavedLocation(parsed);
+            if (!a || a.trim() === "") {
+              const parts: string[] = [];
+              if (parsed.addressLine1) parts.push(parsed.addressLine1);
+              if (parsed.addressLine2) parts.push(parsed.addressLine2);
+              if (parsed.city) parts.push(parsed.city);
+              if (parsed.state) parts.push(parsed.state);
+              if (parsed.postcode) parts.push(parsed.postcode);
+              if (parsed.country) parts.push(parsed.country);
+              const addr = parts.join(", ");
+              if (addr) setDeliveryAddress(addr);
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
     } catch (e) {
       // ignore
     }
@@ -170,6 +198,110 @@ export function CheckoutPage() {
     );
   }
 
+  // helpers for per-store delivery estimates
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const getEstimate = (userLoc: any, storeLoc: any) => {
+    try {
+      const sLat = storeLoc && (storeLoc.latitude ?? storeLoc.lat) ? parseFloat(storeLoc.latitude ?? storeLoc.lat) : null;
+      const sLon = storeLoc && (storeLoc.longitude ?? storeLoc.lng) ? parseFloat(storeLoc.longitude ?? storeLoc.lng) : null;
+      const uLat = userLoc && userLoc.coords && userLoc.coords.lat ? Number(userLoc.coords.lat) : null;
+      const uLon = userLoc && userLoc.coords && userLoc.coords.lng ? Number(userLoc.coords.lng) : null;
+
+      if (sLat !== null && sLon !== null && uLat !== null && uLon !== null) {
+        const km = haversineKm(uLat, uLon, sLat, sLon);
+        if (km <= 50) return { min: 1, max: 2, reason: `~${Math.round(km)}km (local)` };
+        if (km <= 200) return { min: 2, max: 4, reason: `~${Math.round(km)}km` };
+        if (km <= 800) return { min: 4, max: 7, reason: `~${Math.round(km)}km` };
+        return { min: 7, max: 14, reason: `~${Math.round(km)}km (long distance)` };
+      }
+
+      // fallback: matching postcode/city
+      if (userLoc && storeLoc) {
+        if (userLoc.postcode && storeLoc.postcode && userLoc.postcode === storeLoc.postcode) return { min: 1, max: 2, reason: "same postcode" };
+        if (userLoc.city && storeLoc.city && userLoc.city.toLowerCase() === storeLoc.city.toLowerCase()) return { min: 2, max: 4, reason: "same city" };
+      }
+
+      // last resort: moderate default
+      return { min: 2, max: 5, reason: "default" };
+    } catch (e) {
+      return { min: 2, max: 5, reason: "error" };
+    }
+  };
+
+  const formatRange = (min: number, max: number) => {
+    const now = new Date();
+    const a = new Date(now);
+    a.setDate(now.getDate() + min);
+    const b = new Date(now);
+    b.setDate(now.getDate() + max);
+    return `${a.toLocaleDateString()} – ${b.toLocaleDateString()}`;
+  };
+
+  // per-store aggregate state
+  const [storeEstimates, setStoreEstimates] = useState<Record<string, { name: string; min: number; max: number; reason?: string }>>({});
+  const [combinedEstimate, setCombinedEstimate] = useState<{ min: number; max: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!items || items.length === 0) {
+        setStoreEstimates({});
+        setCombinedEstimate(null);
+        return;
+      }
+
+      // map storeId => items
+      const storeIds = new Set<string | null>(items.map((i) => i.storeId ?? null));
+      const fetches: Array<Promise<{ id: string | null; store: any | null }>> = [];
+
+      for (const sid of storeIds) {
+        if (!sid) {
+          // platform default
+          fetches.push(Promise.resolve({ id: "platform", store: null }));
+        } else {
+          fetches.push(
+            fetch(`/api/stores/${sid}`).then((r) => (r.ok ? r.json() : null)).then((s) => ({ id: sid, store: s }))
+          );
+        }
+      }
+
+      const results = await Promise.all(fetches);
+      if (cancelled) return;
+
+      const next: Record<string, { name: string; min: number; max: number; reason?: string }> = {};
+      for (const r of results) {
+        const id = r.id ?? "platform";
+        const store = r.store;
+        const name = store?.name ?? "Platform";
+        const est = getEstimate(savedLocation, store);
+        next[id] = { name, min: est.min, max: est.max, reason: est.reason };
+      }
+
+      setStoreEstimates(next);
+
+      // compute combined: the order completes when the slowest store completes
+      const mins = Object.values(next).map((s) => s.min);
+      const maxs = Object.values(next).map((s) => s.max);
+      if (mins.length > 0 && maxs.length > 0) {
+        setCombinedEstimate({ min: Math.max(...mins), max: Math.max(...maxs) });
+      } else {
+        setCombinedEstimate(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [items, savedLocation]);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -181,6 +313,39 @@ export function CheckoutPage() {
       </header>
       <main className="container max-w-lg mx-auto px-4 py-8">
         <h1 className="text-xl font-semibold mb-4">Checkout</h1>
+
+        {/* delivery estimate summary (per-store breakdown + combined) */}
+        <div className="mb-4">
+          {savedLocation ? (
+            (() => {
+              if (!combinedEstimate || Object.keys(storeEstimates).length === 0) {
+                return <p className="text-muted-foreground">Delivery estimate unavailable for selected location.</p>;
+              }
+
+              return (
+                <div className="rounded-md bg-muted/30 p-3 text-sm">
+                  <div className="font-medium">Estimated delivery (combined): Approx {combinedEstimate.min}-{combinedEstimate.max} business days ({formatRange(combinedEstimate.min, combinedEstimate.max)})</div>
+                  <div className="text-muted-foreground text-sm mt-2">Showing separate estimates per store:</div>
+
+                  <ul className="mt-2 space-y-1">
+                    {Object.entries(storeEstimates).map(([sid, s]) => (
+                      <li key={sid} className="text-sm">
+                        <strong>{s.name}</strong>: Approx {s.min}-{s.max} business days ({formatRange(s.min, s.max)}) {s.reason ? <span className="text-xs text-muted-foreground">— {s.reason}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-2"><Button size="sm" variant="outline" onClick={() => setShowLocationEditor((s) => !s)}>{showLocationEditor ? 'Close' : 'Change location'}</Button></div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="rounded-md bg-muted/30 p-3 text-sm">
+              <div className="text-muted-foreground">No delivery location set. <Button size="sm" onClick={() => setShowLocationEditor(true)}>Set location</Button></div>
+            </div>
+          )}
+        </div>
+
         {items.length === 0 ? (
           <p className="text-muted-foreground mb-4">
             Your cart is empty. <Link href="/store" className="text-primary underline">Continue shopping</Link>.
@@ -226,13 +391,57 @@ export function CheckoutPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-1">Delivery address (saved locally)</label>
-                <textarea
-                  rows={3}
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                  placeholder="Delivery address (will be stored locally for next time)"
-                  className="w-full border rounded px-3 py-2"
-                />
+                <div className="flex gap-2 items-start">
+                  <textarea
+                    rows={3}
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder="Delivery address (will be stored locally for next time)"
+                    className="w-full border rounded px-3 py-2"
+                  />
+                  <div className="w-40">
+                    <Button size="sm" variant="outline" onClick={() => setShowLocationEditor((s) => !s)}>{showLocationEditor ? "Close" : "Select location"}</Button>
+                    <div className="mt-2">
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        // Use saved structured location to fill address
+                        if (savedLocation) {
+                          const parts: string[] = [];
+                          if (savedLocation.addressLine1) parts.push(savedLocation.addressLine1);
+                          if (savedLocation.addressLine2) parts.push(savedLocation.addressLine2);
+                          if (savedLocation.city) parts.push(savedLocation.city);
+                          if (savedLocation.state) parts.push(savedLocation.state);
+                          if (savedLocation.postcode) parts.push(savedLocation.postcode);
+                          if (savedLocation.country) parts.push(savedLocation.country);
+                          const addr = parts.join(", ");
+                          if (addr) {
+                            setDeliveryAddress(addr);
+                            try { localStorage.setItem(DELIVERY_ADDR_KEY, addr); } catch (e) {}
+                          }
+                        }
+                      }}>{savedLocation ? "Use saved" : "No saved location"}</Button>
+                    </div>
+                  </div>
+                </div>
+
+                {showLocationEditor && (
+                  <div className="mt-3">
+                    <LocationInput value={savedLocation ?? undefined} onChange={(v) => {
+                      setSavedLocation(v);
+                      // update short stored label for consistency
+                      try { if (v) localStorage.setItem(LOCATION_FULL_KEY, JSON.stringify(v)); else localStorage.removeItem(LOCATION_FULL_KEY); } catch (e) {}
+                      // optionally auto-fill textarea
+                      const parts: string[] = [];
+                      if (v?.addressLine1) parts.push(v.addressLine1);
+                      if (v?.addressLine2) parts.push(v.addressLine2);
+                      if (v?.city) parts.push(v.city);
+                      if (v?.state) parts.push(v.state);
+                      if (v?.postcode) parts.push(v.postcode);
+                      if (v?.country) parts.push(v.country);
+                      const addr = parts.join(", ");
+                      if (addr) setDeliveryAddress(addr);
+                    }} />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between">
