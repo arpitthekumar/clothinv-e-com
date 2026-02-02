@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
+import { useCart } from "@/components/store/cart-context";
 
 export default function CheckoutSuccessPage() {
+  const { clearCart } = useCart();
+
+  useEffect(() => {
+    // ensure cart is cleared after a successful checkout (safety net)
+    clearCart();
+  }, [clearCart]);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-4">
       <h1 className="text-xl font-semibold">Order placed successfully</h1>

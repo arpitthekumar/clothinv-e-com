@@ -43,6 +43,45 @@ CREATE TABLE IF NOT EXISTS stores (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add optional address/coordinate/protection columns (safe: IF NOT EXISTS)
+ALTER TABLE stores
+  ADD COLUMN IF NOT EXISTS address_line1 TEXT,
+  ADD COLUMN IF NOT EXISTS address_line2 TEXT,
+  ADD COLUMN IF NOT EXISTS city TEXT,
+  ADD COLUMN IF NOT EXISTS state TEXT,
+  ADD COLUMN IF NOT EXISTS postcode TEXT,
+  ADD COLUMN IF NOT EXISTS country TEXT,
+  ADD COLUMN IF NOT EXISTS latitude TEXT,
+  ADD COLUMN IF NOT EXISTS longitude TEXT,
+  ADD COLUMN IF NOT EXISTS protected BOOLEAN NOT NULL DEFAULT false;
+
+-- Create trigger that prevents deleting stores marked as protected
+CREATE OR REPLACE FUNCTION prevent_delete_protected()
+RETURNS trigger AS $$
+BEGIN
+  IF OLD.protected THEN
+    RAISE EXCEPTION 'Cannot delete protected store (id: %)', OLD.id;
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_delete_protected ON stores;
+CREATE TRIGGER trg_prevent_delete_protected
+BEFORE DELETE ON stores
+FOR EACH ROW
+EXECUTE FUNCTION prevent_delete_protected();
+
+-- Seed two protected stores (ensure owner_id is provided; use generated UUIDs as owners)
+INSERT INTO stores (id, name, owner_id, protected, created_at)
+VALUES
+  ('11111111-1111-1111-1111-111111111111', 'Super Store Alpha', gen_random_uuid()::text, true, now()),
+  ('22222222-2222-2222-2222-222222222222', 'Core Hub Beta', gen_random_uuid()::text, true, now())
+ON CONFLICT (id) DO UPDATE
+  SET name = EXCLUDED.name,
+      protected = EXCLUDED.protected,
+      owner_id = EXCLUDED.owner_id;
+
 -- ============================
 -- 1. USERS TABLE
 -- ============================

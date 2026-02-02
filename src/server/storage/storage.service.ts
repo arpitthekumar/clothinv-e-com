@@ -64,6 +64,7 @@ export class SupabaseStorage implements IStorage {
     storesImpl.getStoreByOwnerId(this.client, ownerId);
   getStores = () => storesImpl.getStores(this.client);
   getStoreById = (id: string) => storesImpl.getStoreById(this.client, id);
+  updateStore = (id: string, patch: any) => storesImpl.updateStore(this.client, id, patch);
 
   // Categories
   getCategories = () => categoriesImpl.getCategories(this.client);

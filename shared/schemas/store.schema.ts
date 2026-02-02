@@ -8,6 +8,14 @@ export const stores = pgTable("stores", {
     .default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   ownerId: text("owner_id").notNull().unique(),
+  addressLine1: text("address_line1"),
+  addressLine2: text("address_line2"),
+  city: text("city"),
+  state: text("state"),
+  postcode: text("postcode"),
+  country: text("country"),
+  latitude: varchar("latitude"),
+  longitude: varchar("longitude"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

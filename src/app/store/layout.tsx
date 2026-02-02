@@ -4,14 +4,16 @@ import React from "react";
 import { CartProvider } from "@/components/store/cart-context";
 import { Navbar } from "@/components/ui/Navbar";
 import { HomeFooter } from "@/components/home/HomeFooter";
+import Cta from "@/components/home/CtaSection";
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
-    <CartProvider>
-          <Navbar />
+    <>
+      <Navbar />
 
       {children}
+      <Cta/>
       <HomeFooter/>
-    </CartProvider>
+    </>
   );
 }
