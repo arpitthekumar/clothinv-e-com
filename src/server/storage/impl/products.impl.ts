@@ -136,11 +136,11 @@ export async function createProduct(
     payload.id = crypto.randomUUID();
   }
 
-  // Ensure a slug exists and is unique per store. Use id-prefixed slug to guarantee uniqueness (id-name)
-  if (!payload.slug || String(payload.slug).trim() === "") {
-    const base = slugify(product.name || payload.id);
-    payload.slug = `${payload.id}-${base}`;
-  }
+  // Always enforce id-prefixed slug format for created products. Use provided name or slug
+  // to build the base, then ensure uniqueness within the store using helper.
+  const baseForSlug = slugify(product.name || (product.slug as any) || payload.id);
+  const desired = `${payload.id}-${baseForSlug}`;
+  payload.slug = await uniqueSlugForStore(client, desired, payload.store_id ?? null);
 
   const { data, error } = await client
     .from("products")
@@ -160,10 +160,11 @@ export async function updateProduct(
   if ((product as any).storeId !== undefined) payload.store_id = (product as any).storeId;
   if ((product as any).store_id !== undefined) payload.store_id = (product as any).store_id;
 
-  // If slug is missing or empty, try to generate one using product name and include id to avoid collisions
-  if ((!payload.slug || String(payload.slug).trim() === "") && product.name) {
-    const base = slugify(product.name);
-    payload.slug = `${id}-${base}`;
+  // If a slug was provided or the name changed, normalize it to id-prefixed format and ensure uniqueness
+  if (product.slug || product.name) {
+    const base = slugify(product.name || (product.slug as any) || id);
+    const desired = `${id}-${base}`;
+    payload.slug = await uniqueSlugForStore(client, desired, payload.store_id ?? null);
   }
 
   const { data, error } = await client

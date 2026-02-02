@@ -237,6 +237,20 @@ export async function updateOrderStatus(
       } as any);
     }
 
+    // Link any existing payments for this order to the newly created sale.
+    try {
+      const { error: payErr } = await client
+        .from("payments")
+        .update({ sale_id: sale.id })
+        .eq("order_id", order.id)
+        .is("sale_id", null);
+      if (payErr) {
+        console.warn("Failed to link payments to sale:", payErr);
+      }
+    } catch (e) {
+      // ignore
+    }
+
     // Keep the order record (do not delete). It remains for payments and auditing. Delivered orders will be hidden by default
     // Return an object indicating moved-to-sale so callers can react accordingly
     return { ...(updatedOrder as any), movedToSaleId: sale.id } as any;
