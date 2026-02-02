@@ -8,7 +8,7 @@ const Hero = () => {
   return (
     <div className="relative h-screen flex items-center bg-[url('/hero/ecom-hero1.png')] bg-cover bg-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+      <div className="absolute inset-0  backdrop-blur-sm" />
 
       <div className="relative z-10 max-w-[1200px] mx-auto px-4 flex flex-col md:flex-row items-center h-full">
         {/* Left Content */}

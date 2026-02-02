@@ -69,7 +69,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container px-4 py-8">
+      <div className="mx-auto w-full max-w-7xl px-8 py-8 space-y-10 ">
         <ProductDetailClient product={product} related={related} />
       </div>
     </div>

@@ -34,7 +34,7 @@ export default function CategoryPage() {
     <div className="min-h-screen bg-background">
       <main className="container px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <h1 className="text-xl font-semibold">Category: {slug}</h1>
+          <h1 className="text-xl font-semibold">Category: {slug}</h1><Button onClick={() => window.history.back()}>←</Button>
           <div className="ml-auto flex items-center gap-2">
             <Input className="w-28" placeholder="Min" value={min} onChange={(e) => setMin(e.target.value)} />
             <Input className="w-28" placeholder="Max" value={max} onChange={(e) => setMax(e.target.value)} />

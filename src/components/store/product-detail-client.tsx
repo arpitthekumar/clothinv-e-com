@@ -44,7 +44,7 @@ export default function ProductDetailClient({ product, related = [] }: { product
         <div className="w-full md:w-1/2">
           <div className="sticky top-8">
             <div
-              className="w-full h-[500px] bg-white border overflow-hidden relative"
+              className="w-full h-[500px] rounded-4xl  overflow-hidden relative"
               onMouseEnter={() => setZoom(true)}
               onMouseLeave={() => setZoom(false)}
               onDoubleClick={() => setLightboxOpen(true)}
@@ -54,7 +54,7 @@ export default function ProductDetailClient({ product, related = [] }: { product
                   src={images[current]}
                   alt={product.name}
                   style={{ transform: zoom ? 'scale(2)' : 'scale(1)', transformOrigin: 'center center' }}
-                  className="w-full h-full object-contain transition-transform duration-200"
+                  className="w-full h-full object-fill transition-transform duration-200"
                 />
               ) : (
                 <div className="w-full h-full bg-muted flex items-center justify-center">No image</div>

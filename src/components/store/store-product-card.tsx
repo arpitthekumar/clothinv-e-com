@@ -36,7 +36,7 @@ export function StoreProductCard({ product }: { product: Product }) {
                 }
               })()}
               alt={product.name}
-              className="object-cover w-full h-full"
+              className=" w-full h-full object-fill"
             />
           </a>
         ) : (
