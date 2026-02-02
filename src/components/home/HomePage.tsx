@@ -17,8 +17,7 @@ export function HomePage() {
           <Hero />
         <div className="mx-auto w-full max-w-7xl px-4 py-8 space-y-10">
           <HomeProductGrid />
-
-              <ProcessSection/>
+          <ProcessSection/>
           <Cta/>
         </div>
       </main>

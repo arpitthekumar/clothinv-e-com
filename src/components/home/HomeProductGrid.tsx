@@ -88,7 +88,7 @@ export function HomeProductGrid() {
       <section>
         <h2 className="text-xl font-semibold mb-4">Featured products</h2>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 rounded-4xl bg-amber-200 p-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 rounded-4xl bg-teal-600 p-6">
           {products.slice(0, 10).map((p) => (
             <Link key={p.id} href={`/store/product/${p.slug ?? p.id}`}>
               <Card className="overflow-hidden h-full hover:shadow-md transition">
