@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import LocationInput from "@/components/ui/LocationInput";
 import { useCart } from "./cart-context";
 import { useAuth } from "@/hooks/use-auth";
+import { toast } from "@/hooks/use-toast";
 
 const DELIVERY_ADDR_KEY = "clothinv-delivery-address";
 const DELIVERY_PHONE_KEY = "clothinv-delivery-phone";
@@ -39,23 +40,26 @@ export function CheckoutPage() {
       if (p) setPhone(p);
       if (a) setDeliveryAddress(a);
 
-      // load structured location if available and pre-fill delivery address if empty
+      // load structured location if available and pre-fill delivery address (override to keep consistent)
       if (typeof window !== "undefined") {
         const raw = localStorage.getItem(LOCATION_FULL_KEY);
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
             setSavedLocation(parsed);
-            if (!a || a.trim() === "") {
-              const parts: string[] = [];
-              if (parsed.addressLine1) parts.push(parsed.addressLine1);
-              if (parsed.addressLine2) parts.push(parsed.addressLine2);
-              if (parsed.city) parts.push(parsed.city);
-              if (parsed.state) parts.push(parsed.state);
-              if (parsed.postcode) parts.push(parsed.postcode);
-              if (parsed.country) parts.push(parsed.country);
-              const addr = parts.join(", ");
-              if (addr) setDeliveryAddress(addr);
+
+            // Always prefer saved structured location as canonical delivery text
+            const parts: string[] = [];
+            if (parsed.addressLine1) parts.push(parsed.addressLine1);
+            if (parsed.addressLine2) parts.push(parsed.addressLine2);
+            if (parsed.city) parts.push(parsed.city);
+            if (parsed.state) parts.push(parsed.state);
+            if (parsed.postcode) parts.push(parsed.postcode);
+            if (parsed.country) parts.push(parsed.country);
+            const addr = parts.join(", ");
+            if (addr) {
+              setDeliveryAddress(addr);
+              try { localStorage.setItem(DELIVERY_ADDR_KEY, addr); } catch (e) {}
             }
           } catch (e) {
             // ignore
@@ -66,6 +70,55 @@ export function CheckoutPage() {
       // ignore
     }
   }, []);
+
+  // Listen for other tabs/components updating the saved structured location and sync into the delivery textarea
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== LOCATION_FULL_KEY) return;
+      try {
+        const raw = e.newValue;
+        const parsed = raw ? JSON.parse(raw) : null;
+        setSavedLocation(parsed);
+        if (parsed) {
+          const parts: string[] = [];
+          if (parsed.addressLine1) parts.push(parsed.addressLine1);
+          if (parsed.addressLine2) parts.push(parsed.addressLine2);
+          if (parsed.city) parts.push(parsed.city);
+          if (parsed.state) parts.push(parsed.state);
+          if (parsed.postcode) parts.push(parsed.postcode);
+          if (parsed.country) parts.push(parsed.country);
+          const addr = parts.join(", ");
+          if (addr) {
+            setDeliveryAddress(addr);
+            try { localStorage.setItem(DELIVERY_ADDR_KEY, addr); } catch (err) {}
+            toast({ title: 'Delivery address updated', description: 'Synchronized from saved location' });
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // When the saved structured location changes within this component, keep the delivery textarea in sync
+  useEffect(() => {
+    if (!savedLocation) return;
+    const parts: string[] = [];
+    if (savedLocation.addressLine1) parts.push(savedLocation.addressLine1);
+    if (savedLocation.addressLine2) parts.push(savedLocation.addressLine2);
+    if (savedLocation.city) parts.push(savedLocation.city);
+    if (savedLocation.state) parts.push(savedLocation.state);
+    if (savedLocation.postcode) parts.push(savedLocation.postcode);
+    if (savedLocation.country) parts.push(savedLocation.country);
+    const addr = parts.join(", ");
+    if (addr && addr !== deliveryAddress) {
+      setDeliveryAddress(addr);
+      try { localStorage.setItem(DELIVERY_ADDR_KEY, addr); } catch (e) {}
+      toast({ title: 'Delivery address updated', description: 'Using your saved location' });
+    }
+  }, [savedLocation]);
 
 
   const placeOrder = async () => {

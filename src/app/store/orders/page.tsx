@@ -47,7 +47,6 @@ export default function StoreOrdersPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <main className="container max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-xl font-semibold mb-6">My orders</h1>
         {ordersLoading ? (
@@ -69,6 +68,8 @@ export default function StoreOrdersPage() {
               total_amount?: string;
               created_at?: string;
               order_source?: string;
+              status?: string;
+              storeId?: string;
             }) => (
               <Card key={order.id}>
                 <CardHeader className="pb-2">
@@ -77,7 +78,7 @@ export default function StoreOrdersPage() {
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
                     {order.created_at
-                      ? new Date(order.created_at).toLocaleDateString(undefined, {
+                      ? new Date(order.created_at).toLocaleString(undefined, {
                           dateStyle: "medium",
                           timeStyle: "short",
                         })
@@ -86,9 +87,22 @@ export default function StoreOrdersPage() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <p className="font-medium">
-                    Total: ₹{order.total_amount ?? "0.00"}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Total: ₹{order.total_amount ?? "0.00"}</p>
+                      <p className="text-sm text-muted-foreground">Status: <span className="font-medium">{order.status}</span></p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Link href={`/store/orders/${order.id}`}>
+                        <Button size="sm">Track order</Button>
+                      </Link>
+                      {(order as any).tracking_url ? (
+                        <a href={(order as any).tracking_url} target="_blank" rel="noreferrer">
+                          <Button variant="outline" size="sm">Track shipment</Button>
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
