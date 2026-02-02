@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { SupabaseStorage } from "@/server/storage/storage.service";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const id = params.id;
+    const params = await context.params;
+    const id = params?.id;
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const storage = new SupabaseStorage();
     const s = await storage.getStoreById(id);

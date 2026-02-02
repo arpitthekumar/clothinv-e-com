@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast"; 
 
 export type LocationValue = {
   addressLine1?: string;
@@ -60,7 +61,7 @@ export default function LocationInput({
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not available in your browser.");
+      toast({ title: 'Geolocation unavailable', description: 'Geolocation is not available in your browser.', variant: 'destructive' as any });
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -71,7 +72,7 @@ export default function LocationInput({
       },
       (err) => {
         console.error("Geolocation error", err);
-        alert("Could not fetch your location: " + err.message);
+        toast({ title: 'Location failed', description: err?.message ?? 'Failed to get your location', variant: 'destructive' as any });
       },
       { maximumAge: 1000 * 60 * 5 }
     );

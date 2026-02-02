@@ -8,12 +8,12 @@ import Cta from "@/components/home/CtaSection";
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
-    <CartProvider>
-          <Navbar />
+    <>
+      <Navbar />
 
       {children}
       <Cta/>
       <HomeFooter/>
-    </CartProvider>
+    </>
   );
 }

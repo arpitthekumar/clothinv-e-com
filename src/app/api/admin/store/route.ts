@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { SupabaseStorage } from "@/server/storage/storage.service";
-import { requireAdmin } from "../_lib/session";
+import { requireAdmin } from "../../_lib/session";
 
 export async function GET() {
   const auth = await requireAdmin();

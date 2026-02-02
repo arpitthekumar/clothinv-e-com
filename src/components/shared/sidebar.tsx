@@ -83,6 +83,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
     { href: "/admin/sales", icon: Receipt, label: "Sales Management" },
     { href: "/admin/reports", icon: FileBarChart, label: "Reports" },
     { href: "/admin/orders", icon: Search, label: "Orders" },
+    { href: "/admin/store", icon: RotateCcw, label: "Store Settings" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 

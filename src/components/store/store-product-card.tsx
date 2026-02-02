@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useCart } from "./cart-context";
+import { toast } from "@/hooks/use-toast";
 
 type Product = {
   id: string;
@@ -18,6 +20,7 @@ type Product = {
 
 export function StoreProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const [adding, setAdding] = useState(false);
   const outOfStock = product.stock <= 0;
 
   return (
@@ -61,19 +64,33 @@ export function StoreProductCard({ product }: { product: Product }) {
       <CardFooter>
         <Button
           className="w-full"
-          disabled={outOfStock}
-          onClick={() =>
-            addItem({
-              productId: product.id,
-              name: product.name,
-              sku: product.sku,
-              price: product.price,
-              quantity: 1,
-              storeId: product.storeId ?? null,
-            })
-          }
+          disabled={outOfStock || adding}
+          onClick={(e) => {
+            // prevent parent links / propagation and provide immediate UX
+            e.preventDefault();
+            e.stopPropagation();
+            if (outOfStock || adding) return;
+            setAdding(true);
+            try {
+              addItem({
+                productId: product.id,
+                name: product.name,
+                sku: product.sku,
+                price: product.price,
+                quantity: 1,
+                storeId: product.storeId ?? null,
+              });
+              toast({ title: 'Added to cart', description: product.name });
+            } catch (err) {
+              console.error('Add to cart failed', err);
+              toast({ title: 'Add failed', description: 'Could not add item to cart', variant: 'destructive' as any });
+            } finally {
+              // keep small visual feedback
+              setTimeout(() => setAdding(false), 400);
+            }
+          }}
         >
-          {outOfStock ? "Out of stock" : "Add to cart"}
+          {outOfStock ? "Out of stock" : adding ? "Adding..." : "Add to cart"}
         </Button>
       </CardFooter>
     </Card>

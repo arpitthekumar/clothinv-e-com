@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import LocationInput from "@/components/ui/LocationInput";
 import { useCart } from "@/components/store/cart-context";
+import { toast } from "@/hooks/use-toast"; 
 
 export default function ProductDetailClient({ product, related = [] }: { product: any; related?: any[] }) {
   const { addItem, clearCart } = useCart();
@@ -87,6 +88,10 @@ export default function ProductDetailClient({ product, related = [] }: { product
     setAdding(true);
     try {
       addItem({ productId: product.id, name: product.name, sku: product.sku, price: product.price, quantity: 1, storeId: product.storeId ?? null });
+      toast({ title: 'Added to cart', description: product.name });
+    } catch (err) {
+      console.error('Add to cart failed', err);
+      toast({ title: 'Add failed', description: 'Could not add item to cart', variant: 'destructive' as any });
     } finally {
       setAdding(false);
     }
@@ -98,7 +103,11 @@ export default function ProductDetailClient({ product, related = [] }: { product
       // Replace cart with this item and go to checkout
       clearCart();
       addItem({ productId: product.id, name: product.name, sku: product.sku, price: product.price, quantity: 1, storeId: product.storeId ?? null });
+      toast({ title: 'Proceeding to checkout', description: product.name });
       router.push("/store/checkout");
+    } catch (err) {
+      console.error('Buy now failed', err);
+      toast({ title: 'Error', description: 'Could not start checkout', variant: 'destructive' as any });
     } finally {
       setAdding(false);
     }

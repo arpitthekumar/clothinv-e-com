@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { tailwindBorderMap, tailwindColorMap } from "@/lib/colors";
 import { useCart } from "../store/cart-context";
+import { toast } from "@/hooks/use-toast"; 
 import PromoBanner from "./PromoBanner";
 import EcomPromoImage from "../../../public/home/promoimage.png";
 
@@ -134,14 +135,19 @@ export function HomeProductGrid() {
                         sku: p.id,
                         price: p.price,
                         quantity: 1,
+                        storeId: p.storeId ?? null,
                       });
+                      toast({ title: 'Added to cart', description: p.name });
+                    } catch (err) {
+                      console.error('Add to cart failed', err);
+                      toast({ title: 'Add failed', description: 'Could not add item to cart', variant: 'destructive' as any });
                     } finally {
                       setAddingId(null);
                     }
                   }}
                               >
                   {addingId === p.id ? "Adding..." : "Add to cart"}
-                </Button>
+                </Button> 
                 </CardContent>
               </Card>
             </Link>
