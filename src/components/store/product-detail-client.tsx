@@ -40,6 +40,7 @@ export default function ProductDetailClient({ product, related = [] }: { product
 
   return (
     <div className="space-y-6">
+        <Button onClick={() => router.back()}>← Back</Button>
       <div className="flex gap-6 flex-col md:flex-row">
         <div className="w-full md:w-1/2">
           <div className="sticky top-8">
@@ -82,6 +83,7 @@ export default function ProductDetailClient({ product, related = [] }: { product
           <p className="text-sm text-muted-foreground mt-1">
             SKU: {product.sku ?? "—"} • Stock: {product.stock ?? "—"} • Store: {product.storeName ?? "Platform"} • Added: {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : "—"}
           </p>
+         
           <p className={`mt-4 ${expanded ? '' : 'line-clamp-3'}`}>{product.description}</p>
           {product.description && product.description.length > 200 && (
             <button className="text-primary text-sm mt-2" onClick={() => setExpanded(!expanded)}>{expanded ? 'Show less' : 'Show more'}</button>

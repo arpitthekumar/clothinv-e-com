@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { tailwindBorderMap, tailwindColorMap } from "@/lib/colors";
 import { useCart } from "../store/cart-context";
+import PromoBanner from "./PromoBanner";
+import EcomPromoImage from "../../../public/home/promoimage.png";
 
 // 🔹 TYPES
 type Category = {
@@ -145,6 +147,16 @@ export function HomeProductGrid() {
           ))}
         </div>
       </section>
+      <div id="promo">
+        <PromoBanner
+          title="Get 10% Off on Your First Online Order"
+          subtitle="Limited Time Offer"
+          imageSrc={EcomPromoImage}
+          imageAlt="E-commerce workspace with products and packaging"
+          backgroundColor="bg-primary"
+          textColor="text-primary-foreground"
+        />
+      </div>
 
       {/* ================= BY CATEGORY ================= */}
       {categories.length > 0 && (
@@ -176,7 +188,7 @@ export function HomeProductGrid() {
                     <button
                       type="button"
                       onClick={() => scroll(cat.id, "left")}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white border rounded-full p-2 shadow cursor-pointer"
+                      className="absolute left-1 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white  rounded-full p-2 shadow cursor-pointer"
                     >
                       ←
                     </button>
@@ -184,7 +196,7 @@ export function HomeProductGrid() {
                     <button
                       type="button"
                       onClick={() => scroll(cat.id, "right")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white border rounded-full p-2 shadow cursor-pointer"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white  rounded-full p-2 shadow cursor-pointer"
                     >
                       →
                     </button>
