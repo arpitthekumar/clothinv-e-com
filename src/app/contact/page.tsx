@@ -5,6 +5,7 @@ import { HomeFooter } from "@/components/home/HomeFooter";
 import Hero from "@/components/store/hero";
 import Hero1 from "../../../public/hero/ecom-hero.png";
 import Cta from "@/components/home/CtaSection";
+import FAQ from "@/components/shared/faq";
 
 export default function ContactPage() {
   return (
@@ -88,7 +89,7 @@ export default function ContactPage() {
               Please make sure you are signed in before contacting us.
             </p>
           </div>
-
+          <FAQ />
           {/* CTA */}
           <div className="mt-20">
             <Cta />

@@ -19,6 +19,7 @@ export function HomePage() {
           <HomeProductGrid />
           <ProcessSection/>
           <Cta/>
+          
         </div>
       </main>
 
