@@ -27,8 +27,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Razorpay keys not configured" }, { status: 500 });
     }
 
-    // Create Razorpay order
-    const payload = { amount, currency: "INR", receipt: order.id, payment_capture: 1 } as any;
+    // Create Razorpay order with a note so webhooks can resolve our order id reliably
+    const payload = { amount, currency: "INR", receipt: order.id, payment_capture: 1, notes: { clothinv_order_id: order.id } } as any;
+
+    // Mark order as having an in-progress razorpay payment (helpful for webhooks)
+    try {
+      await storage.updateOrder(order.id, { payment_provider: "razorpay" } as any);
+    } catch (err) {
+      console.warn("Failed to update order.payment_provider", err);
+    }
 
     const resp = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",

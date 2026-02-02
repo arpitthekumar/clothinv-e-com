@@ -7,12 +7,17 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "./cart-context";
 import { useAuth } from "@/hooks/use-auth";
 
+const DELIVERY_ADDR_KEY = "clothinv-delivery-address";
+const DELIVERY_PHONE_KEY = "clothinv-delivery-phone";
+
 export function CheckoutPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const { items, totalAmount, clearCart } = useCart();
+  const { items, totalAmount, clearCart, updateQuantity } = useCart();
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string>("");
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
 
   useEffect(() => {
     if (isLoading) return;
@@ -21,6 +26,19 @@ export function CheckoutPage() {
       router.replace(`/auth?returnUrl=${returnUrl}`);
     }
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    // Load phone & address from localStorage (frontend-only persistence)
+    try {
+      const p = typeof window !== "undefined" ? localStorage.getItem(DELIVERY_PHONE_KEY) : null;
+      const a = typeof window !== "undefined" ? localStorage.getItem(DELIVERY_ADDR_KEY) : null;
+      if (p) setPhone(p);
+      if (a) setDeliveryAddress(a);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
 
   const placeOrder = async () => {
     if (items.length === 0) {
@@ -37,14 +55,29 @@ export function CheckoutPage() {
         name: i.name,
         sku: i.sku,
       }));
+      // Validate phone
+      if (!phone || phone.trim().length < 6) {
+        throw new Error("Please enter a valid phone number before placing the order.");
+      }
+
+      // persist phone & delivery address locally for next time
+      try {
+        localStorage.setItem(DELIVERY_PHONE_KEY, phone);
+        localStorage.setItem(DELIVERY_ADDR_KEY, deliveryAddress);
+      } catch (e) {
+        // ignore
+      }
+
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: orderItems,
           customer_name: user?.fullName || user?.username,
-          customer_phone: "N/A",
+          customer_phone: phone,
           payment_method: "online",
+          // deliveryAddress is frontend-only; we don't persist it server-side, but include it in the request body for UX/reporting if desired
+          delivery_address: deliveryAddress,
         }),
       });
       if (!res.ok) {
@@ -154,25 +187,64 @@ export function CheckoutPage() {
           </p>
         ) : (
           <>
-            <ul className="space-y-2 mb-6">
+            <ul className="space-y-4 mb-6">
               {items.map((item) => (
                 <li
                   key={item.productId}
-                  className="flex justify-between text-sm"
+                  className="flex items-center justify-between text-sm gap-4"
                 >
-                  <span>
-                    {item.name} × {item.quantity}
-                  </span>
-                  <span>
-                    ₹{(parseFloat(item.price) * item.quantity).toFixed(2)}
-                  </span>
+                  <div className="flex-1">
+                    <div className="font-medium">{item.name}</div>
+                    <div className="text-muted-foreground text-xs">SKU: {item.sku}</div>
+                  </div>
+
+                  <div className="w-32 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => updateQuantity(item.productId, Math.max(1, Number(e.target.value || 1)))}
+                      className="w-20 border rounded px-2 py-1 text-sm"
+                    />
+                    <div className="whitespace-nowrap">₹{(parseFloat(item.price) * item.quantity).toFixed(2)}</div>
+                  </div>
                 </li>
               ))}
             </ul>
-            <p className="font-semibold mb-4">Total: ₹{totalAmount}</p>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Your phone number"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Delivery address (saved locally)</label>
+                <textarea
+                  rows={3}
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  placeholder="Delivery address (will be stored locally for next time)"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="font-semibold">Total: ₹{totalAmount}</div>
+                <div className="text-sm text-muted-foreground">Items: {items.length}</div>
+              </div>
+            </div>
+
             {error && (
               <p className="text-destructive text-sm mb-4">{error}</p>
             )}
+
             <Button
               className="w-full"
               disabled={placing}

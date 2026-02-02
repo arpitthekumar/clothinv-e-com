@@ -43,7 +43,7 @@ export function StoreProductCard({ product }: { product: Product }) {
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
             No image
           </div>
-        )}
+        )} 
       </div>
       <CardContent className="pt-4 flex-1">
         <h3 className="font-semibold truncate"><a href={`/store/product/${product.slug ?? product.id}`}>{product.name}</a></h3>

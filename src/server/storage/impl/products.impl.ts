@@ -3,6 +3,7 @@ import type {
   Product,
   InsertProduct,
 } from "@shared/schema";
+import crypto from "crypto";
 
 export async function getProducts(
   client: SupabaseServerClient,
@@ -130,11 +131,16 @@ export async function createProduct(
     store_id: (product as any).store_id ?? (product as any).storeId ?? null,
   };
 
-  // Ensure a slug exists and is unique per store
-  if (!payload.slug || String(payload.slug).trim() === "") {
-    const base = slugify(product.name || crypto.randomUUID());
-    payload.slug = await uniqueSlugForStore(client, base, payload.store_id);
+  // Ensure id exists so slug can include it (id-prefixed slug). Generate one on app side
+  if (!payload.id) {
+    payload.id = crypto.randomUUID();
   }
+
+  // Always enforce id-prefixed slug format for created products. Use provided name or slug
+  // to build the base, then ensure uniqueness within the store using helper.
+  const baseForSlug = slugify(product.name || (product.slug as any) || payload.id);
+  const desired = `${payload.id}-${baseForSlug}`;
+  payload.slug = await uniqueSlugForStore(client, desired, payload.store_id ?? null);
 
   const { data, error } = await client
     .from("products")
@@ -154,10 +160,11 @@ export async function updateProduct(
   if ((product as any).storeId !== undefined) payload.store_id = (product as any).storeId;
   if ((product as any).store_id !== undefined) payload.store_id = (product as any).store_id;
 
-  // If slug is missing or empty, try to generate one using product name
-  if ((!payload.slug || String(payload.slug).trim() === "") && product.name) {
-    const base = slugify(product.name);
-    payload.slug = await uniqueSlugForStore(client, base, payload.store_id ?? null);
+  // If a slug was provided or the name changed, normalize it to id-prefixed format and ensure uniqueness
+  if (product.slug || product.name) {
+    const base = slugify(product.name || (product.slug as any) || id);
+    const desired = `${id}-${base}`;
+    payload.slug = await uniqueSlugForStore(client, desired, payload.store_id ?? null);
   }
 
   const { data, error } = await client

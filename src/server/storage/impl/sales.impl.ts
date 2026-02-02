@@ -18,6 +18,7 @@ export async function getSalesFiltered(
   client: SupabaseServerClient,
   params: {
     userId?: string | null;
+    storeId?: string | null;
     limit: number;
     cursor?: string | null;
     deleted?: boolean;
@@ -32,6 +33,7 @@ export async function getSalesFiltered(
 ) {
   const {
     userId,
+    storeId,
     limit,
     cursor,
     deleted,
@@ -45,6 +47,7 @@ export async function getSalesFiltered(
   } = params;
   let query = client.from("sales").select("*");
   if (userId) query = query.eq("user_id", userId);
+  if (storeId) query = query.eq("store_id", storeId);
   if (deleted !== undefined) query = query.eq("deleted", deleted);
   if (payment) query = query.ilike("payment_method", payment);
   if (start) query = query.gte("created_at", start);
@@ -169,6 +172,8 @@ export async function createSale(
 
   if ((sale as any).storeId) {
     payload.store_id = (sale as any).storeId;
+  } else if ((sale as any).store_id) {
+    payload.store_id = (sale as any).store_id;
   }
   const { data, error } = await client
     .from("sales")

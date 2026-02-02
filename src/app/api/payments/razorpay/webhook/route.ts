@@ -26,22 +26,33 @@ export async function POST(req: NextRequest) {
     const order_provider_id = payment?.entity?.order_id;
     const amount = payment?.entity?.amount || 0;
 
-    // Try to find payment by order_provider_id -> or use order's receipt
-    // For simplicity: find order by receipt == order id
-    const receipt = payment?.entity?.notes?.receipt || null;
+    // Try to resolve our local order id from the webhook payload.
+    // Prioritize notes.clothinv_order_id -> receipt -> fallback to looking up payments with this order_provider_id
+    const receipt = payment?.entity?.notes?.clothinv_order_id || payment?.entity?.receipt || null;
     let orderId = receipt;
 
     if (!orderId && order_provider_id) {
-      // Try to find orders with this provider id
-      const orders = await storage.getOrders(true);
-      const match = (orders || []).find((o: any) => o.payment_provider === "razorpay" && o.payment_status !== "paid" && o.id === (payment?.entity?.notes?.receipt || ""));
-      orderId = match?.id ?? null;
+      // Maybe there's already a payment record referencing the razorpay order id; use it to find our order
+      try {
+        const { data: existing } = await (storage as any).client.from("payments").select("order_id").eq("order_provider_id", order_provider_id).limit(1).maybeSingle();
+        orderId = existing?.order_id ?? null;
+      } catch (e) {
+        // ignore and continue
+      }
     }
 
     if (orderId) {
+      let storeId = null;
+      try {
+        const ord = await storage.getOrderById(orderId);
+        storeId = (ord as any)?.store_id ?? (ord as any)?.storeId ?? null;
+      } catch (e) {
+        // ignore
+      }
+
       await storage.createPayment({
         order_id: orderId,
-        store_id: null,
+        store_id: storeId,
         provider: "razorpay",
         order_provider_id,
         payment_id: pid,

@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Navbar } from "@/components/ui/Navbar";
 import { StoreProductCard } from "@/components/store/store-product-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ export default function CategoryPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <main className="container px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
           <h1 className="text-xl font-semibold">Category: {slug}</h1>

@@ -25,9 +25,13 @@ export async function GET(req: NextRequest) {
       ? null
       : auth.user.id;
 
+  // Admins should be scoped to their store by default
+  const storeId = auth.user.role === "admin" ? auth.user.storeId ?? null : null;
+
   // 🚀 Call filtered storage method
   const { data, nextCursor } = await storage.getSalesFiltered({
     userId,
+    storeId,
     limit,
     cursor,
     deleted,
