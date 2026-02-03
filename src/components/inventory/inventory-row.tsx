@@ -133,9 +133,10 @@ export function InventoryRow({
         <td className="p-2 sm:p-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="min-w-0">
-              <p className="font-medium truncate text-sm sm:text-base">
+              <p className="font-medium text-sm sm:text-base truncate max-w-[180px]">
                 {product.name}
               </p>
+
               <p className="text-xs text-muted-foreground truncate">
                 SKU: {product.sku}
               </p>
