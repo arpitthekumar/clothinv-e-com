@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/ui/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -69,8 +71,7 @@ export default function OrderDetailPage() {
   const estimated = (order as any).estimated_delivery;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className=" bg-background">
       <main className="container max-w-2xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold">Order {order.invoice_number ?? order.id}</h1>
@@ -83,11 +84,76 @@ export default function OrderDetailPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Status: {order.status}</CardTitle>
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-base">Order status</CardTitle>
+                  <Badge
+                    variant={(() => {
+                      const s = (order.status || "").toString().toLowerCase();
+                      if (s === "cancelled" || s === "canceled") return "destructive";
+                      if (s === "delivered" || s === "completed") return "default";
+                      if (s === "shipped" || s === "dispatched") return "outline";
+                      return "secondary";
+                    })()}
+                    className="uppercase tracking-wide text-xs py-1 px-2"
+                  >
+                    {((str: any) => String(str ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()))(order.status)}
+                  </Badge>
+                </div>
+
+                <div className="mt-3">
+                  <Progress
+                    value={(() => {
+                      const s = (order.status || "").toString().toLowerCase();
+                      switch (s) {
+                        case "pending":
+                        case "placed":
+                          return 15;
+                        case "processing":
+                        case "confirmed":
+                          return 45;
+                        case "shipped":
+                        case "dispatched":
+                          return 75;
+                        case "delivered":
+                        case "completed":
+                          return 100;
+                        case "cancelled":
+                        case "canceled":
+                          return 0;
+                        default:
+                          return 30;
+                      }
+                    })()}
+                    className="h-2 rounded-full"
+                  />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                    <span>Placed</span>
+                    <span>Processing</span>
+                    <span>Shipped</span>
+                    <span>Delivered</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 items-end">
+                {trackingUrl ? (
+                  <>
+                    <a href={trackingUrl} target="_blank" rel="noreferrer">
+                      <Button size="sm">Track shipment</Button>
+                    </a>
+                    <Button variant="outline" size="sm" onClick={() => window.open(trackingUrl, "_blank")}>Open tracking</Button>
+                  </>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Tracking information is not available yet.</div>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <p className="mb-2">Placed: {order.created_at ? new Date(order.created_at).toLocaleString() : ""}</p>
-            <p className="mb-4">Total: ₹{order.total_amount ?? "0.00"}</p>
+            <p className="mt-4 mb-2 text-sm text-muted-foreground">Placed: {order.created_at ? new Date(order.created_at).toLocaleString() : ""}</p>
+            <p className="mb-4 text-lg font-semibold">Total: ₹{order.total_amount ?? "0.00"}</p>
 
             <div className="mb-4">
               <h3 className="font-medium mb-2">Items</h3>
@@ -104,7 +170,7 @@ export default function OrderDetailPage() {
               </ul>
             </div>
 
-            {trackingUrl ? (
+            {/* {trackingUrl ? (
               <div className="flex items-center space-x-2">
                 <a href={trackingUrl} target="_blank" rel="noreferrer">
                   <Button>Track shipment</Button>
@@ -120,7 +186,7 @@ export default function OrderDetailPage() {
                   </Link>
                 </div>
               </div>
-            )}
+            )} */}
 
             {estimated ? (
               <p className="mt-4 text-sm">Estimated delivery: {estimated}</p>

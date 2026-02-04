@@ -72,6 +72,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
     { href: "/superadmin", icon: BarChart3, label: "Super Admin Dashboard" },
     { href: "/admin/merchant-requests", icon: ShieldCheck, label: "Merchant Requests" },
     { href: "/admin/category-requests", icon: FolderClock, label: "Category Requests" },
+    { href: "/superadmin/live-categories", icon: FolderClock, label: "Live Categories" },
     { href: "/superadmin/stores", icon: Package, label: "Store Oversight" },
     { href: "/admin/users", icon: Users, label: "Users" },
   ];
