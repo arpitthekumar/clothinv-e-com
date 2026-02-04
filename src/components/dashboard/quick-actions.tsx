@@ -137,7 +137,7 @@ export function QuickActions() {
             </p>
           </div>
 
-          <Link href="/pos">
+          <Link href="/admin/pos">
             <Button
               className="w-full bg-green-600 hover:bg-green-700"
               data-testid="button-generate-bill"

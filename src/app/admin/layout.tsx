@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  if (user && user.role !== "admin" && user.role !== "super_admin") {
+  if (user && user.role !== "admin" && user.role !== "super_admin" && user.role !== "employee") {
     if (typeof window !== "undefined") window.location.href = "/";
     return null;
   }

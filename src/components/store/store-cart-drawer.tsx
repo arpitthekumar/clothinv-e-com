@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,21 @@ import { ShoppingCart } from "lucide-react";
 export function StoreCartDrawer() {
   const { items, totalItems, totalAmount, updateQuantity, removeItem } =
     useCart();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // On the server (and first client render) we render a non-interactive placeholder
+  // so SSR markup matches the initial client render and avoids Radix id mismatches.
+  if (!mounted) {
+    return (
+      <Button variant="outline" size="icon" className="relative">
+        <ShoppingCart className="h-5 w-5" />
+      </Button>
+    );
+  }
 
   return (
     <Sheet>

@@ -47,8 +47,18 @@ export default function AuthPage() {
       }
     }
 
-    if (user.role === "super_admin" || user.role === "admin") {
+    if (user.role === "super_admin") {
       router.replace("/superadmin");
+      return;
+    }
+
+    if (user.role === "admin") {
+      router.replace("/admin");
+      return;
+    }
+
+    if (user.role === "employee") {
+      router.replace("/admin/pos");
       return;
     }
 
@@ -57,7 +67,7 @@ export default function AuthPage() {
       return;
     }
 
-    router.replace("/pos");
+    router.replace("/admin");
   }, [user, returnUrl, router]);
 
   const onLoginSubmit = (data: LoginFormValues) => {
