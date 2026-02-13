@@ -3,13 +3,30 @@ import { Sidebar } from "@/components/shared/sidebar";
 import { Header } from "@/components/shared/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { Settings as SettingsIcon, Shield, Percent, Folder } from "lucide-react";
-import { CouponsManagement } from "@/components/pages/coupons-management";
-import { CategoriesManagement } from "@/components/pages/categories-management";
+import { Settings as SettingsIcon, Shield, Percent, Folder, Monitor, Smartphone, Download } from "lucide-react";
+import { CategoriesManagement } from "./categories-management";
+import { CouponsManagement } from "./coupons-management";
+import { Button } from "../ui/button";
 
 export default function Settings() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user } = useAuth();
+  const [device, setDevice] = useState<"windows" | "android" | "other">("other");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const ua = navigator.userAgent;
+
+      if (ua.includes("Windows")) {
+        setDevice("windows");
+      } else if (ua.includes("Android")) {
+        setDevice("android");
+      } else {
+        setDevice("other");
+      }
+    }
+  }, []);
+
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -102,31 +119,76 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            {/* Categories Management */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Folder className="mr-2 text-primary" />
-                  Categories
+                  <Download className="mr-2 text-primary" />
+                  Required Extensions
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <CategoriesManagement />
+
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Android */}
+                <div
+                  className={`border rounded-lg p-4 flex flex-col gap-3 relative transition
+      ${device === "android" ? "border-green-500 " : ""}
+    `}
+                >
+                  {device === "android" && (
+                    <span className="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-1 rounded-full">
+                      Recommended
+                    </span>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="text-green-500" />
+                    <h3 className="font-semibold">Android Extension</h3>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    Install the Android APK to enable printing and hardware sync.
+                  </p>
+
+                  <a href="/downloads/app-release.apk" download>
+                    <Button className="w-full">
+                      Download APK
+                    </Button>
+                  </a>
+                </div>
+
+                {/* Windows */}
+                <div
+                  className={`border rounded-lg p-4 flex flex-col gap-3 relative transition
+      ${device === "windows" ? "border-blue-500 " : ""}
+    `}
+                >
+                  {device === "windows" && (
+                    <span className="absolute top-2 right-2 text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                      Recommended
+                    </span>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Monitor className="text-blue-500" />
+                    <h3 className="font-semibold">Windows Extension</h3>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    Install the Windows desktop app (.exe) for printer support.
+                  </p>
+
+                  <a href="/downloads/app-installer.exe" download>
+                    <Button className="w-full">
+                      Download .EXE
+                    </Button>
+                  </a>
+                </div>
+
               </CardContent>
+
             </Card>
 
-            {/* Discount Coupons Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Percent className="mr-2 text-primary" />
-                  Discount Coupons
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CouponsManagement />
-              </CardContent>
-            </Card>
           </div>
         </main>
       </div>

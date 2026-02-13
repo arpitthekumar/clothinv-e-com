@@ -16,7 +16,7 @@ import {
   ScanBarcode,
   Receipt,
   ShieldCheck,
-  FolderClock,
+  FolderClock, ChevronDown, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -34,6 +34,12 @@ export function Sidebar({ isOpen }: SidebarProps) {
     syncing: false,
     lastSync: "Just now",
   });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  useEffect(() => {
+    if (location.startsWith("/admin/settings")) {
+      setSettingsOpen(true);
+    }
+  }, [location]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -77,15 +83,22 @@ export function Sidebar({ isOpen }: SidebarProps) {
     { href: "/admin/users", icon: Users, label: "Users" },
   ];
 
+  // const adminMenuItems = [
+  //   { href: "/admin", icon: BarChart3, label: "Dashboard" },
+  //   { href: "/admin/users", icon: Users, label: "Users" },
+  //   { href: "/admin/inventory", icon: Package, label: "Inventory" },
+  //   { href: "/admin/sales", icon: Receipt, label: "Sales Management" },
+  //   { href: "/admin/reports", icon: FileBarChart, label: "Reports" },
+  //   { href: "/admin/orders", icon: Search, label: "Orders" },
+  //   { href: "/admin/store", icon: RotateCcw, label: "Store Settings" },
+  //   { href: "/admin/settings", icon: Settings, label: "Settings" },
+  // ];
   const adminMenuItems = [
     { href: "/admin", icon: BarChart3, label: "Dashboard" },
-    { href: "/admin/users", icon: Users, label: "Users" },
     { href: "/admin/inventory", icon: Package, label: "Inventory" },
     { href: "/admin/sales", icon: Receipt, label: "Sales Management" },
     { href: "/admin/reports", icon: FileBarChart, label: "Reports" },
     { href: "/admin/orders", icon: Search, label: "Orders" },
-    { href: "/admin/store", icon: RotateCcw, label: "Store Settings" },
-    { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 
   const employeeMenuItems = [
@@ -171,15 +184,14 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 Last sync: {connectionStatus.lastSync}
               </div>
               <p
-                className={`text-xs ${
-                  user?.role === "super_admin"
-                    ? "text-amber-400"
-                    : user?.role === "admin"
+                className={`text-xs ${user?.role === "super_admin"
+                  ? "text-amber-400"
+                  : user?.role === "admin"
                     ? "text-orange-300"
                     : user?.role === "employee"
-                    ? "text-blue-500"
-                    : "text-muted-foreground"
-                }`}
+                      ? "text-blue-500"
+                      : "text-muted-foreground"
+                  }`}
               >
                 {user?.role === "super_admin" ? "Super Admin" : (user?.role ?? "").replace("_", " ")}
               </p>
@@ -207,6 +219,46 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 </Link>
               ))}
             </div>
+            {/* Settings Dropdown */}
+            {user?.role === "admin" && (
+              <div className="">
+                <button
+                  onClick={() => setSettingsOpen(!settingsOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-muted transition"
+                >
+                  <div className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </div>
+                  {settingsOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+
+                {settingsOpen && (
+                  <div className="ml-6 mt-2 space-y-1">
+                    {[
+                      { href: "/admin/settings/store", label: "Store Settings" },
+                      { href: "/admin/settings", label: "Personal Settings" },
+                      { href: "/admin/users", label: "Users" },
+                      { href: "/admin/settings/categories", label: "Categories" },
+                      { href: "/admin/settings/coupons", label: "Coupons" },
+                    ].map((item) => (
+                      <Link key={item.href} href={item.href}>
+                        <Button
+                          variant={location === item.href ? "default" : "ghost"}
+                          className="w-full justify-start text-sm"
+                        >
+                          {item.label}
+                        </Button>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Common Menu Items */}
             <div className="border-t border-border pt-4 mt-4">
@@ -223,6 +275,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
               ))}
             </div>
           </div>
+
         </nav>
       </div>
     </div>
