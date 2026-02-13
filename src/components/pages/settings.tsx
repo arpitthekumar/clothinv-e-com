@@ -4,8 +4,6 @@ import { Header } from "@/components/shared/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { Settings as SettingsIcon, Shield, Percent, Folder, Monitor, Smartphone, Download } from "lucide-react";
-import { CategoriesManagement } from "./categories-management";
-import { CouponsManagement } from "./coupons-management";
 import { Button } from "../ui/button";
 
 export default function Settings() {
@@ -131,9 +129,7 @@ export default function Settings() {
 
                 {/* Android */}
                 <div
-                  className={`border rounded-lg p-4 flex flex-col gap-3 relative transition
-      ${device === "android" ? "border-green-500 " : ""}
-    `}
+                  className={`border rounded-lg p-4 flex flex-col gap-3 relative transition ${device === "android" ? "border-green-500 " : ""}`}
                 >
                   {device === "android" && (
                     <span className="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-1 rounded-full">
@@ -159,15 +155,19 @@ export default function Settings() {
 
                 {/* Windows */}
                 <div
-                  className={`border rounded-lg p-4 flex flex-col gap-3 relative transition
-      ${device === "windows" ? "border-blue-500 " : ""}
-    `}
+                  className={`border rounded-lg p-4 flex flex-col gap-3 relative transition ${device === "windows" ? "border-blue-500" : ""} opacity-70`}
                 >
+                  {/* Recommended Badge */}
                   {device === "windows" && (
                     <span className="absolute top-2 right-2 text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
                       Recommended
                     </span>
                   )}
+
+                  {/* Development Badge */}
+                  <span className="absolute top-2 right-2 text-xs bg-yellow-500 text-white px-2 py-1 rounded-full">
+                    Under Development
+                  </span>
 
                   <div className="flex items-center gap-2">
                     <Monitor className="text-blue-500" />
@@ -175,15 +175,14 @@ export default function Settings() {
                   </div>
 
                   <p className="text-sm text-muted-foreground">
-                    Install the Windows desktop app (.exe) for printer support.
+                    Windows desktop app is currently under development. It will enable printer support and hardware sync.
                   </p>
 
-                  <a href="/downloads/app-installer.exe" download>
-                    <Button className="w-full">
-                      Download .EXE
-                    </Button>
-                  </a>
+                  <Button className="w-full" disabled>
+                    Coming Soon
+                  </Button>
                 </div>
+
 
               </CardContent>
 
